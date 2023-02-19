@@ -39,8 +39,8 @@ class ResultAnalyzer(ResultVisitor):
                 ).hexdigest()[16:32]
             else:
                 parent_hash = hashlib.sha3_512(
-                    str(keyword.parent.source + keyword.parent.name).encode("UTF-8")
-                ).hexdigest()[16:32]
+                    f"{keyword.parent.libname}{keyword.parent.name}".encode("UTF-8")
+                ).hexdigest()[16:32] 
             kw_name = keyword.name[16:]
             if kw_name not in KEYWORD_CALLS:
                 KEYWORD_CALLS[kw_name] = KeywordCall(parent_hash)
