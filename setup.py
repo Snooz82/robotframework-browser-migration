@@ -1,15 +1,15 @@
-from setuptools import setup
-from setuptools import find_packages
 import re
 from os.path import abspath, dirname, join
 
+from setuptools import find_packages, setup
+
 CURDIR = dirname(abspath(__file__))
 
-with open("README.rst", "r", encoding='utf-8') as fh:
+with open("README.rst", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
-with open(join(CURDIR, 'src', 'SeleniumStats', '__init__.py'), encoding='utf-8') as f:
-    VERSION = re.search("\n__version__ = '(.*)'", f.read()).group(1)
+with open(join(CURDIR, "src", "SeleniumStats", "__init__.py"), encoding="utf-8") as f:
+    VERSION = re.search('__version__ = "(.*)"', f.read()).group(1)
 
 setup(
     name="robotframework-browser-migration",
@@ -20,8 +20,8 @@ setup(
     long_description_content_type="text/x-rst",
     long_description=long_description,
     url="https://github.com/Snooz82/robotframework-browser-migration",
-    package_dir={'': 'src'},
-    packages=find_packages('src'),
+    package_dir={"": "src"},
+    packages=find_packages("src"),
     classifiers=[
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
@@ -33,6 +33,6 @@ setup(
         "Topic :: Software Development :: Testing :: Acceptance",
         "Framework :: Robot Framework",
     ],
-    python_requires='>=3.6',
-    install_requires=['robotframework >= 5.0']
+    python_requires=">=3.6",
+    install_requires=["robotframework >= 5.0"],
 )

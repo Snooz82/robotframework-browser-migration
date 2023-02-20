@@ -1,0 +1,4 @@
+[tool.pylint]
+max-line-length = 100
+[tool.black]
+line-length = 100
