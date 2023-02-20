@@ -8,6 +8,7 @@ from typing import Any, List, Optional, Union
 from Browser import Browser
 from Browser.assertion_engine import AssertionOperator as AO
 from Browser.utils.data_types import *
+from robot.api import logger
 from robot.api.deco import keyword, library
 from robot.libraries.BuiltIn import BuiltIn
 from robot.utils import DotDict
@@ -19,6 +20,7 @@ NOT_CONTAINS = AO["not contains"]
 STARTS_WITH = AO["^="]
 ENDS_WITH = AO["$="]
 THEN = AO["then"]
+GREATER_THAN = AO[">"]
 
 
 class WebElement(str):
@@ -104,7 +106,7 @@ class WebElement(str):
             if match:
                 loc = locator[match.end() :]
                 return cls(selector.format(loc=loc))
-        if locator.startswith("/"):
+        if re.match(r"\(*//", locator):
             return cls(f"xpath={locator}")
         return cls("[id={loc}], [name={loc}]".format(loc=locator))
 
@@ -163,6 +165,62 @@ class SeleniumLibraryToBrowser:
             self._browser.set_strict_mode(False, Scope.Global)
             BuiltIn().set_library_search_order("SeleniumLibraryToBrowser")
         return self._browser
+
+    def get_button_locator(self, locator: WebElement) -> WebElement:
+        loc = WebElement.is_default(locator)
+        if loc:
+            locator = (
+                "css="
+                f'button[id="{loc}"],'
+                f'button[name="{loc}"],'
+                f'button[value="{loc}"],'
+                f'input[id="{loc}"],'
+                f'input[name="{loc}"],'
+                f'input[value="{loc}"]'
+            )
+        return locator
+
+    def get_link_locator(self, locator: WebElement) -> WebElement:
+        loc = WebElement.is_default(locator)
+        if loc:
+            locator = (
+                f'xpath=//a[@id="{loc}"] | '
+                f'//a[@name="{loc}"] | '
+                f'//a[@href="{loc}"] | '
+                f'//a[normalize-space(descendant-or-self::text())="{loc}"]'
+            )
+        return locator
+
+    def get_image_locator(self, locator: WebElement) -> WebElement:
+        loc = WebElement.is_default(locator)
+        if loc:
+            locator = (
+                f'xpath=//img[@id="{loc}"] | '
+                f'//img[@name="{loc}"] | '
+                f'//img[@src="{loc}"] | '
+                f'//img[@alt="{loc}"]'
+            )
+        return locator
+
+    def get_list_locator(self, locator: WebElement) -> WebElement:
+        loc = WebElement.is_default(locator)
+        if loc:
+            locator = (
+                f'xpath=//select[@id="{loc}"] | '
+                f'//select[@name="{loc}"] | '
+                f'//select[@value="{loc}"]'
+            )
+        return locator
+
+    def page_contains(self, locator):
+        self.b.set_selector_prefix(None, scope=Scope.Global)
+        if self.b.get_element_count(locator):
+            return True
+        frames = self.b.get_elements("iframe, frame")
+        for frame in frames:
+            if self.b.get_element_count(f"{frame} >>> {locator}"):
+                return True
+        return False
 
     @keyword
     def add_cookie(
@@ -238,17 +296,7 @@ class SeleniumLibraryToBrowser:
     def click_button(self, locator: WebElement, modifier: Union[bool, str] = False):
         if modifier:
             raise NotImplementedError("Modifier is not implemented")
-        loc = WebElement.is_default(locator)
-        if loc:
-            locator = (
-                "css="
-                f'button[id="{loc}"],'
-                f'button[name="{loc}"],'
-                f'button[value="{loc}"],'
-                f'input[id="{loc}"],'
-                f'input[name="{loc}"],'
-                f'input[value="{loc}"]'
-            )
+        locator = self.get_button_locator(locator)
         self.b.click(selector=locator)
 
     @keyword(tags=("IMPLEMENTED",))
@@ -277,14 +325,7 @@ class SeleniumLibraryToBrowser:
         """
         if modifier:
             raise NotImplementedError("Modifier is not implemented")
-        loc = WebElement.is_default(locator)
-        if loc:
-            locator = (
-                f'xpath=//img[@id="{loc}"] | '
-                f'//img[@name="{loc}"] | '
-                f'//img[@src="{loc}"] | '
-                f'//img[@alt="{loc}"]'
-            )
+        locator = self.get_image_locator(locator)
         self.b.click(selector=locator)
 
     @keyword(tags=("IMPLEMENTED",))
@@ -294,14 +335,7 @@ class SeleniumLibraryToBrowser:
         """
         if modifier:
             raise NotImplementedError("Modifier is not implemented")
-        loc = WebElement.is_default(locator)
-        if loc:
-            locator = (
-                f'xpath=//a[@id="{loc}"] | '
-                f'//a[@name="{loc}"] | '
-                f'//a[@href="{loc}"] | '
-                f'//a[normalize-space(descendant-or-self::text())="{loc}"]'
-            )
+        locator = self.get_link_locator(locator)
         self.b.click(selector=locator)
 
     @keyword(tags=("IMPLEMENTED",))
@@ -529,59 +563,63 @@ class SeleniumLibraryToBrowser:
             self.b.switch_page(current_page, context=SelectionType.ALL, browser=SelectionType.ALL)
 
     def _generate_locations(self, browser: str):
-        if browser.upper() == "CURRENT":
-            page_ids = self.b.get_page_ids(browser=SelectionType.CURRENT)
-        elif browser.upper() == "ALL":
-            page_ids = self.b.get_page_ids()
-        else:
-            print(1, self._browser_indexes.get(browser, None))
-            print(2, self._browser_aliases.get(browser))
-            print(3, self._browser_indexes.get(self._browser_aliases.get(browser), None))
-            id = self._browser_indexes.get(browser, None) or self._browser_indexes.get(
-                self._browser_aliases.get(browser), None
-            )
-            if id is None:
-                raise ValueError(f"Browser '{browser}' not found")
-            self.b.switch_browser(id)
-            page_ids = self.b.get_page_ids(browser=SelectionType.CURRENT)
-        for page_id in page_ids:
+        for page_id in self._get_page_ids(browser):
             self.b.switch_page(page_id, context=SelectionType.ALL, browser=SelectionType.ALL)
             yield self.b.get_url()
 
-    @keyword
+    def _get_page_ids(self, browser: str):
+        if browser.upper() == "CURRENT":
+            return self.b.get_page_ids(browser=SelectionType.CURRENT)
+        if browser.upper() == "ALL":
+            return self.b.get_page_ids()
+
+        id = self._browser_indexes.get(browser, None) or self._browser_indexes.get(
+            self._browser_aliases.get(browser), None
+        )
+        if id is None:
+            raise ValueError(f"Browser '{browser}' not found")
+        org_browser = self.b.switch_browser(id)
+        try:
+            return self.b.get_page_ids(browser=SelectionType.CURRENT)
+        finally:
+            self.b.switch_browser(org_browser)
+
+    @keyword(tags=("IMPLEMENTED",))
     def get_selected_list_label(self, locator: WebElement):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        selected_labels = self.b.get_selected_options(locator, SelectAttribute.label)
+        try:
+            return selected_labels[0]
+        except IndexError:
+            return None
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def get_selected_list_labels(self, locator: WebElement):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        return self.b.get_selected_options(locator, SelectAttribute.label)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def get_selected_list_value(self, locator: WebElement):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        selected_values = self.b.get_selected_options(locator, SelectAttribute.value)
+        try:
+            return selected_values[0]
+        except IndexError:
+            return None
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def get_selected_list_values(self, locator: WebElement):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        return self.b.get_selected_options(locator, SelectAttribute.value)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def get_selenium_implicit_wait(self):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        return self.b.timeout
 
     @keyword
     def get_selenium_speed(self):
         "*NOT IMPLEMENTED YET*"
         raise NotImplementedError("keyword is not implemented")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def get_selenium_timeout(self):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        return self.b.timeout
 
     @keyword
     def get_session_id(self):
@@ -593,7 +631,7 @@ class SeleniumLibraryToBrowser:
         "*NOT IMPLEMENTED YET*"
         raise NotImplementedError("keyword is not implemented")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def get_table_cell(
         self,
         locator: Union[WebElement, None, str],
@@ -601,8 +639,12 @@ class SeleniumLibraryToBrowser:
         column: int,
         loglevel: str = "TRACE",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        try:
+            element = self.b.get_table_cell_element(locator, column, row)
+            return self.b.get_text(element)
+        except Exception as e:
+            self.log_source(loglevel)
+            raise e
 
     @keyword(tags=("IMPLEMENTED",))
     def get_text(self, locator: WebElement):
@@ -648,25 +690,35 @@ class SeleniumLibraryToBrowser:
         "*NOT IMPLEMENTED YET*"
         raise NotImplementedError("keyword is not implemented")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def get_window_size(self, inner: bool = False):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        scope = "inner" if inner else "outer"
+        return self.b.evaluate_javascript(
+            None, f"() => [window.{scope}Width, window.{scope}Height]"
+        )
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def get_window_titles(self, browser: str = "CURRENT"):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        current_page = self.b.get_page_ids(
+            page=SelectionType.CURRENT, context=SelectionType.CURRENT, browser=SelectionType.CURRENT
+        )[0]
+        try:
+            return list(self._generate_locations(browser))
+        finally:
+            self.b.switch_page(current_page, context=SelectionType.ALL, browser=SelectionType.ALL)
 
-    @keyword
+    def _generate_titles(self, browser: str):
+        for page_id in self._get_page_ids(browser):
+            self.b.switch_page(page_id, context=SelectionType.ALL, browser=SelectionType.ALL)
+            yield self.b.get_title()
+
+    @keyword(tags=("IMPLEMENTED",))
     def go_back(self):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        self.b.go_back()
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def go_to(self, url):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        self.b.go_to(url)
 
     @keyword
     def handle_alert(self, action: str = "ACCEPT", timeout: Optional[timedelta] = None):
@@ -692,75 +744,77 @@ class SeleniumLibraryToBrowser:
         "*NOT IMPLEMENTED YET*"
         raise NotImplementedError("keyword is not implemented")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def list_selection_should_be(self, locator: WebElement, *expected: str):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        selected_labels = self.b.get_selected_options(locator, SelectAttribute.label)
+        selected_values = self.b.get_selected_options(locator, SelectAttribute.value)
+        assert sorted(selected_labels) == sorted(expected) or sorted(selected_values) == sorted(
+            expected
+        ), f"Expected selection to be {expected}, but was {selected_labels} ({selected_values})"
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def list_should_have_no_selections(self, locator: WebElement):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        self.b.get_selected_options(locator, SelectAttribute.label, EQUALS)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def location_should_be(self, url: str, message: Optional[str] = None):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        self.b.get_url(EQUALS, url, message)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def location_should_contain(self, expected: str, message: Optional[str] = None):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        self.b.get_url(CONTAINS, expected, message)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def log_location(self):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        location = self.b.get_url()
+        logger.info(location)
+        return location
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def log_source(self, loglevel: str = "INFO"):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        source = sef.b.get_source()
+        logger.write(source, level)
+        return source
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def log_title(self):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        title = self.b.get_title()
+        logger.info(title)
+        return title
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def maximize_browser_window(self):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        self.b.set_viewport_size(1920, 1080)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def mouse_down(self, locator: WebElement):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        self.b.hover(locator)
+        self.b.mouse_button(MouseButtonAction.down)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def mouse_down_on_image(self, locator: WebElement):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        locator = self.get_image_locator(locator)
+        self.mouse_down(locator)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def mouse_down_on_link(self, locator: WebElement):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        locator = self.get_link_locator(locator)
+        self.mouse_down(locator)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def mouse_out(self, locator: WebElement):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        bbox = self.b.get_boundingbox(locator, BoundingBoxFields.ALL)
+        self.b.hover(locator)
+        self.b.mouse_move_relative_to(locator, bbox.width / 2 + 1, bbox.height / 2 + 1, steps=10)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def mouse_over(self, locator: WebElement):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        self.b.hover(locator)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def mouse_up(self, locator: WebElement):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        self.b.hover(locator)
+        self.b.mouse_button(MouseButtonAction.up)
 
     @keyword(tags=("IMPLEMENTED",))
     def open_browser(
@@ -785,37 +839,46 @@ class SeleniumLibraryToBrowser:
             self._browser_aliases[alias] = identifier
         return identifier
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def open_context_menu(self, locator: WebElement):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        self.b.click(locator, MouseButton.right)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def page_should_contain(self, text: str, loglevel: str = "TRACE"):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        assert self.page_contains(f"text={text}"), f"Page should have contained text '{text}'"
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_button(
         self,
         locator: WebElement,
         message: Optional[str] = None,
         loglevel: str = "TRACE",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        locator = self.get_button_locator(locator)
+        for element in self.b.get_elements(locator):
+            if self.b.get_property(element, "nodeName") in ["INPUT", "BUTTON"]:
+                return
+        self.log_source(loglevel)
+        raise AssertionError(message or f"Page should have contained button '{locator}'")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_checkbox(
         self,
         locator: WebElement,
         message: Optional[str] = None,
         loglevel: str = "TRACE",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        elements = self.b.get_elements(locator)
+        for element in elements:
+            if (
+                self.b.get_attribute(element, "type").lower() == "checkbox"
+                and self.b.get_property(element, "nodeName") == "INPUT"
+            ):
+                return
+        self.log_source(loglevel)
+        raise AssertionError(message or f"Page should have contained checkbox '{locator}'")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_element(
         self,
         locator: WebElement,
@@ -823,147 +886,242 @@ class SeleniumLibraryToBrowser:
         loglevel: str = "TRACE",
         limit: Optional[int] = None,
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        count = self.b.get_element_count(locator)
+        if limit is not None:
+            if count == limit:
+                return
+            self.log_source(loglevel)
+            raise AssertionError(
+                message
+                or f"Page should have contained {limit} element(s), but it did contained {count} element(s)"
+            )
+        if not count:
+            self.log_source(loglevel)
+            raise AssertionError(message or f"Page should have contained element '{locator}'")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_image(
         self,
         locator: WebElement,
         message: Optional[str] = None,
         loglevel: str = "TRACE",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        locator = self.get_image_locator(locator)
+        for element in self.b.get_elements(locator):
+            if self.b.get_property(element, "nodeName") == "IMG":
+                return
+        self.log_source(loglevel)
+        raise AssertionError(message or f"Page should have contained image '{locator}'")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_link(
         self,
         locator: WebElement,
         message: Optional[str] = None,
         loglevel: str = "TRACE",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        locator = self.get_link_locator(locator)
+        for element in self.b.get_elements(locator):
+            if self.b.get_property(element, "nodeName") == "A":
+                return
+        self.log_source(loglevel)
+        raise AssertionError(message or f"Page should have contained link '{locator}'")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_list(
         self,
         locator: WebElement,
         message: Optional[str] = None,
         loglevel: str = "TRACE",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        for element in self.b.get_elements(locator):
+            if self.b.get_property(element, "nodeName") == "SELECT":
+                return
+        self.log_source(loglevel)
+        raise AssertionError(message or f"Page should have contained list '{locator}'")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_radio_button(
         self,
         locator: WebElement,
         message: Optional[str] = None,
         loglevel: str = "TRACE",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        for element in self.b.get_elements(locator):
+            if (
+                self.b.get_attribute(element, "type").lower() == "radio"
+                and self.b.get_property(element, "nodeName") == "INPUT"
+            ):
+                return
+        self.log_source(loglevel)
+        raise AssertionError(message or f"Page should have contained radio button '{locator}'")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_textfield(
         self,
         locator: WebElement,
         message: Optional[str] = None,
         loglevel: str = "TRACE",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        for element in self.b.get_elements(locator):
+            if self.b.get_property(element, "nodeName") == "INPUT" and self.b.get_attribute(
+                element, "type"
+            ).lower() in [
+                "date",
+                "datetime-local",
+                "email",
+                "month",
+                "number",
+                "password",
+                "search",
+                "tel",
+                "text",
+                "time",
+                "url",
+                "week",
+                "file",
+            ]:
+                return
+        self.log_source(loglevel)
+        raise AssertionError(message or f"Page should have contained textfield '{locator}'")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def page_should_not_contain(self, text: str, loglevel: str = "TRACE"):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        assert not self.page_contains(
+            f"text={text}"
+        ), f"Page should have not contained text '{text}'"
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def page_should_not_contain_button(
         self,
         locator: WebElement,
         message: Optional[str] = None,
         loglevel: str = "TRACE",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        locator = self.get_button_locator(locator)
+        for element in self.b.get_elements(locator):
+            if self.b.get_property(element, "nodeName") in ["INPUT", "BUTTON"]:
+                self.log_source(loglevel)
+                raise AssertionError(
+                    message or f"Page should have not contained button '{locator}'"
+                )
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def page_should_not_contain_checkbox(
         self,
         locator: WebElement,
         message: Optional[str] = None,
         loglevel: str = "TRACE",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        for element in self.b.get_elements(locator):
+            if (
+                self.b.get_attribute(element, "type").lower() == "checkbox"
+                and self.b.get_property(element, "nodeName") == "INPUT"
+            ):
+                self.log_source(loglevel)
+                raise AssertionError(
+                    message or f"Page should have not contained checkbox '{locator}'"
+                )
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def page_should_not_contain_element(
         self,
         locator: WebElement,
         message: Optional[str] = None,
         loglevel: str = "TRACE",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        if self.b.get_element_count(locator):
+            self.log_source(loglevel)
+            raise AssertionError(message or f"Page should have not contained element '{locator}'")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def page_should_not_contain_image(
         self,
         locator: WebElement,
         message: Optional[str] = None,
         loglevel: str = "TRACE",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        locator = self.get_image_locator(locator)
+        for element in self.b.get_elements(locator):
+            if self.b.get_property(element, "nodeName") == "IMG":
+                self.log_source(loglevel)
+                raise AssertionError(message or f"Page should have not contained image '{locator}'")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def page_should_not_contain_link(
         self,
         locator: WebElement,
         message: Optional[str] = None,
         loglevel: str = "TRACE",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        locator = self.get_link_locator(locator)
+        for element in self.b.get_elements(locator):
+            if self.b.get_property(element, "nodeName") == "A":
+                self.log_source(loglevel)
+                raise AssertionError(message or f"Page should have not contained link '{locator}'")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def page_should_not_contain_list(
         self,
         locator: WebElement,
         message: Optional[str] = None,
         loglevel: str = "TRACE",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        for element in self.b.get_elements(locator):
+            if self.b.get_property(element, "nodeName") == "SELECT":
+                self.log_source(loglevel)
+                raise AssertionError(message or f"Page should have not contained list '{locator}'")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def page_should_not_contain_radio_button(
         self,
         locator: WebElement,
         message: Optional[str] = None,
         loglevel: str = "TRACE",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        for element in self.b.get_elements(locator):
+            if (
+                self.b.get_attribute(element, "type").lower() == "radio"
+                and self.b.get_property(element, "nodeName") == "INPUT"
+            ):
+                self.log_source(loglevel)
+                raise AssertionError(
+                    message or f"Page should have not contained radio button '{locator}'"
+                )
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def page_should_not_contain_textfield(
         self,
         locator: WebElement,
         message: Optional[str] = None,
         loglevel: str = "TRACE",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        for element in self.b.get_elements(locator):
+            if self.b.get_property(element, "nodeName") == "INPUT" and self.b.get_attribute(
+                element, "type"
+            ).lower() in [
+                "date",
+                "datetime-local",
+                "email",
+                "month",
+                "number",
+                "password",
+                "search",
+                "tel",
+                "text",
+                "time",
+                "url",
+                "week",
+                "file",
+            ]:
+                self.log_source(loglevel)
+                raise AssertionError(
+                    message or f"Page should have not contained textfield '{locator}'"
+                )
 
     @keyword
     def press_key(self, locator: WebElement, key: str):
-        "*NOT IMPLEMENTED YET*"
+        "*DEPRECATED*"
         raise NotImplementedError("keyword is not implemented")
 
     @keyword
@@ -986,34 +1144,31 @@ class SeleniumLibraryToBrowser:
         "*NOT IMPLEMENTED YET*"
         raise NotImplementedError("keyword is not implemented")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def reload_page(self):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        self.b.reload()
 
     @keyword
     def remove_location_strategy(self, strategy_name: str):
         "*NOT IMPLEMENTED YET*"
         raise NotImplementedError("keyword is not implemented")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def scroll_element_into_view(self, locator: WebElement):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        self.b.scroll_to_element(locator)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def select_all_from_list(self, locator: WebElement):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        options = [item["value"] for item in self.b.get_select_options(locator)]
+        self.b.select_options_by(locator, SelectAttribute.value, *options)
 
     @keyword(tags=("IMPLEMENTED",))
     def select_checkbox(self, locator: WebElement):
         self.b.check_checkbox(locator)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def select_frame(self, locator: WebElement):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        self.b.set_selector_prefix(f"{locator} >>>", scope=Scope.Global)
 
     @keyword(tags=("IMPLEMENTED",))
     def select_from_list_by_index(self, locator: WebElement, *indexes: str):
@@ -1037,40 +1192,36 @@ class SeleniumLibraryToBrowser:
         "*NOT IMPLEMENTED YET*"
         raise NotImplementedError("keyword is not implemented")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def set_focus_to_element(self, locator: WebElement):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        self.b.focus(locator)
 
     @keyword
     def set_screenshot_directory(self, path: Optional[str]):
         "*NOT IMPLEMENTED YET*"
         raise NotImplementedError("keyword is not implemented")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def set_selenium_implicit_wait(self, value: timedelta):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        self.b.set_browser_timeout(value)
 
     @keyword
     def set_selenium_speed(self, value: timedelta):
         "*NOT IMPLEMENTED YET*"
         raise NotImplementedError("keyword is not implemented")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def set_selenium_timeout(self, value: timedelta):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        self.b.set_browser_timeout(value)
 
     @keyword
     def set_window_position(self, x: int, y: int):
         "*NOT IMPLEMENTED YET*"
         raise NotImplementedError("keyword is not implemented")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def set_window_size(self, width: int, height: int, inner: bool = False):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        self.b.set_viewport_size(width, height)
 
     @keyword
     def simulate_event(self, locator: WebElement, event: str):
@@ -1082,10 +1233,14 @@ class SeleniumLibraryToBrowser:
         "*NOT IMPLEMENTED YET*"
         raise NotImplementedError("keyword is not implemented")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def switch_browser(self, index_or_alias: str):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        id = self._browser_indexes.get(index_or_alias, None) or self._browser_indexes.get(
+            self._browser_aliases.get(index_or_alias), None
+        )
+        if id is None:
+            raise ValueError(f"Browser '{browser}' not found")
+        return self.b.switch_browser(id)
 
     @keyword
     def switch_window(
@@ -1161,50 +1316,89 @@ class SeleniumLibraryToBrowser:
         "*NOT IMPLEMENTED YET*"
         raise NotImplementedError("keyword is not implemented")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def textarea_should_contain(
         self,
         locator: WebElement,
         expected: str,
         message: Optional[str] = None,
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        for element in self.b.get_elements(locator):
+            if self.b.get_property(element, "nodeName") == "TEXTAREA":
+                self.b.get_text(locator, CONTAINS, expected, message)
+        raise AssertionError("Element is not a textarea")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def textarea_value_should_be(
         self,
         locator: WebElement,
         expected: str,
         message: Optional[str] = None,
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        for element in self.b.get_elements(locator):
+            if self.b.get_property(element, "nodeName") == "TEXTAREA":
+                self.b.get_text(locator, EQUALS, expected, message)
+        raise AssertionError("Element is not a textarea")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def textfield_should_contain(
         self,
         locator: WebElement,
         expected: str,
         message: Optional[str] = None,
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        for element in self.b.get_elements(locator):
+            if self.b.get_property(element, "nodeName") == "INPUT" and self.b.get_attribute(
+                element, "type"
+            ).lower() in [
+                "date",
+                "datetime-local",
+                "email",
+                "month",
+                "number",
+                "password",
+                "search",
+                "tel",
+                "text",
+                "time",
+                "url",
+                "week",
+                "file",
+            ]:
+                self.b.get_text(locator, CONTAINS, expected, message)
+        raise AssertionError("Element is not a textfield")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def textfield_value_should_be(
         self,
         locator: WebElement,
         expected: str,
         message: Optional[str] = None,
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        for element in self.b.get_elements(locator):
+            if self.b.get_property(element, "nodeName") == "INPUT" and self.b.get_attribute(
+                element, "type"
+            ).lower() in [
+                "date",
+                "datetime-local",
+                "email",
+                "month",
+                "number",
+                "password",
+                "search",
+                "tel",
+                "text",
+                "time",
+                "url",
+                "week",
+                "file",
+            ]:
+                self.b.get_text(locator, EQUALS, expected, message)
+        raise AssertionError("Element is not a textfield")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def title_should_be(self, title: str, message: Optional[str] = None):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        self.b.get_title(EQUALS, title, message)
 
     @keyword(tags=("IMPLEMENTED",))
     def unselect_all_from_list(self, locator: WebElement):
@@ -1214,10 +1408,9 @@ class SeleniumLibraryToBrowser:
     def unselect_checkbox(self, locator: WebElement):
         self.b.uncheck_checkbox(locator)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def unselect_frame(self):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        self.b.set_selector_prefix("", scope=Scope.Global)
 
     @keyword
     def unselect_from_list_by_index(self, locator: WebElement, *indexes: str):
