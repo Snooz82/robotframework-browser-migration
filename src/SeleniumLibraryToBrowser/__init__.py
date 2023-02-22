@@ -312,7 +312,7 @@ class SeleniumLibraryToBrowser:
 
     @keyword(tags=("IMPLEMENTED",))
     def click_element_at_coordinates(self, locator: WebElement, xoffset: int, yoffset: int):
-        bbox = self.b.get_boundingbox(selector)  # {x, y, width, height}
+        bbox = self.b.get_boundingbox(selector=locator)  # {x, y, width, height}
         # calculates the half of the width and height of the element
         x = bbox["width"] / 2 + xoffset
         y = bbox["height"] / 2 + yoffset
@@ -772,8 +772,8 @@ class SeleniumLibraryToBrowser:
 
     @keyword(tags=("IMPLEMENTED",))
     def log_source(self, loglevel: str = "INFO"):
-        source = sef.b.get_source()
-        logger.write(source, level)
+        source = self.b.get_source()
+        logger.write(source, level=loglevel)
         return source
 
     @keyword(tags=("IMPLEMENTED",))
@@ -1234,7 +1234,7 @@ class SeleniumLibraryToBrowser:
         raise NotImplementedError("keyword is not implemented")
 
     @keyword(tags=("IMPLEMENTED",))
-    def switch_browser(self, index_or_alias: str):
+    def switch_browser(self, index_or_alias: str, browser: str = "CURRENT"):
         id = self._browser_indexes.get(index_or_alias, None) or self._browser_indexes.get(
             self._browser_aliases.get(index_or_alias), None
         )
