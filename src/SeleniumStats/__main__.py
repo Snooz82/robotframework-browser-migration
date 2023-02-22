@@ -59,7 +59,7 @@ class ResultAnalyzer(ResultVisitor):
         )
         print("IP-Addresses or other personal data are not logged when uploading the file!")
         print("You can also mail it to mailto:rene@robotframework.org.\n")
-        print("Thanks you very much for your support!")
+        print("Thank you very much for your support!")
         print("Your Browser-Team (Mikko, Tatu, Kerkko, Janne and René)")
 
     def print_stats(self, kw_calls):
