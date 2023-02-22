@@ -20,6 +20,7 @@ NOT_CONTAINS = AO["not contains"]
 STARTS_WITH = AO["^="]
 ENDS_WITH = AO["$="]
 THEN = AO["then"]
+VALIDATE = AO["validate"]
 GREATER_THAN = AO[">"]
 
 
@@ -97,10 +98,19 @@ class WebElement(str):
         "partial link": "css=a >> text={loc}",
         "default": "[id={loc}], [name={loc}]",
         "text": "text={loc}",
+        "element": "element={loc}",
     }
 
     @classmethod
     def from_string(cls, locator: str) -> "WebElement":
+        for illegal_loc in ["dom", "sizzle", "jquery", "data"]:
+            match = re.match(f"{illegal_loc} ?[:=] ?", locator)
+            if match:
+                raise ValueError(
+                    f"Invalid locator strategy '{illegal_loc}'.\n"
+                    f"Please use a supported locator strategy instead.\n"
+                    f"{list(cls.LOCATORS.keys())}"
+                )
         for strategy, selector in cls.LOCATORS.items():
             match = re.match(f"{strategy} ?[:=] ?", locator)
             if match:
@@ -108,11 +118,11 @@ class WebElement(str):
                 return cls(selector.format(loc=loc))
         if re.match(r"\(*//", locator):
             return cls(f"xpath={locator}")
-        return cls("[id={loc}], [name={loc}]".format(loc=locator))
+        return cls("[id='{loc}'], [name='{loc}']".format(loc=locator))
 
     @staticmethod
     def is_default(locator: str) -> bool:
-        m = re.fullmatch("\[id=(.*)], \[name=(.*)]", locator)
+        m = re.fullmatch("\[id='(.*)'], \[name='(.*)']", locator)
         if m and m.group(1) == m.group(2):
             return m.group(1)
         return None
@@ -170,13 +180,15 @@ class SeleniumLibraryToBrowser:
         loc = WebElement.is_default(locator)
         if loc:
             locator = (
-                "css="
-                f'button[id="{loc}"],'
-                f'button[name="{loc}"],'
-                f'button[value="{loc}"],'
-                f'input[id="{loc}"],'
-                f'input[name="{loc}"],'
-                f'input[value="{loc}"]'
+                "xpath="
+                f'//button[@id="{loc}"]|'
+                f'//button[@name="{loc}"]|'
+                f'//button[@value="{loc}"]|'
+                f'//button[.="{loc}"]|'
+                f'//input[@id="{loc}"]|'
+                f'//input[@name="{loc}"]|'
+                f'//input[@value="{loc}"]|'
+                f'//input[.="{loc}"]'
             )
         return locator
 
@@ -216,9 +228,9 @@ class SeleniumLibraryToBrowser:
         self.b.set_selector_prefix(None, scope=Scope.Global)
         if self.b.get_element_count(locator):
             return True
-        frames = self.b.get_elements("iframe, frame")
-        for frame in frames:
-            if self.b.get_element_count(f"{frame} >>> {locator}"):
+        count = self.b.get_element_count("iframe, frame")
+        for index in range(count):
+            if self.b.get_element_count(f"iframe, frame >> nth={index} >>> {locator}"):
                 return True
         return False
 
@@ -416,11 +428,11 @@ class SeleniumLibraryToBrowser:
 
     @keyword(tags=("IMPLEMENTED",))
     def element_should_be_disabled(self, locator: WebElement):
-        self.b.get_element_states(locator, CONTAINS, "disabled")
+        self.b.get_element_states(locator, VALIDATE, "(readonly | disabled) & value")
 
     @keyword(tags=("IMPLEMENTED",))
     def element_should_be_enabled(self, locator: WebElement):
-        self.b.get_element_states(locator, CONTAINS, "enabled")
+        self.b.get_element_states(locator, VALIDATE, "not bool((readonly | disabled) & value)")
 
     @keyword(tags=("IMPLEMENTED",))
     def element_should_be_focused(self, locator: WebElement):
@@ -439,7 +451,7 @@ class SeleniumLibraryToBrowser:
         ignore_case: bool = False,
     ):
         if ignore_case:
-            self.b.get_text(locator, THEN, f"'''{expected}'''.lower() in value.lower()", message)
+            self.b.get_text(locator, VALIDATE, f"'''{expected}'''.lower() in value.lower()", message)
         else:
             self.b.get_text(locator, CONTAINS, expected, message)
 
@@ -455,7 +467,10 @@ class SeleniumLibraryToBrowser:
         message: Optional[str] = None,
         ignore_case: bool = False,
     ):
-        self.b.get_text(locator, NOT_CONTAINS, expected, message)
+        if ignore_case:
+            self.b.get_text(locator, VALIDATE, f"'''{expected}'''.lower() not in value.lower()", message)
+        else:
+            self.b.get_text(locator, AO["not contains"], expected, message)
 
     @keyword(tags=("IMPLEMENTED",))
     def element_text_should_be(
@@ -465,7 +480,12 @@ class SeleniumLibraryToBrowser:
         message: Optional[str] = None,
         ignore_case: bool = False,
     ):
-        self.b.get_text(locator, EQUALS, expected, message)
+        if ignore_case:
+            self.b.get_text(
+                locator, VALIDATE, f"'''{expected}'''.lower() == value.lower()", message
+            )
+        else:
+            self.b.get_text(locator, EQUALS, expected, message)
 
     @keyword(tags=("IMPLEMENTED",))
     def element_text_should_not_be(
@@ -477,7 +497,7 @@ class SeleniumLibraryToBrowser:
     ):
         if ignore_case:
             self.b.get_text(
-                locator, THEN, f"'''{not_expected}'''.lower() not in value.lower()", message
+                locator, VALIDATE, f"'''{not_expected}'''.lower() not in value.lower()", message
             )
         else:
             self.b.get_text(locator, NOT_EQUALS, not_expected, message)
@@ -628,8 +648,7 @@ class SeleniumLibraryToBrowser:
 
     @keyword
     def get_source(self):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        self.b.get_page_source()
 
     @keyword(tags=("IMPLEMENTED",))
     def get_table_cell(
@@ -772,7 +791,7 @@ class SeleniumLibraryToBrowser:
 
     @keyword(tags=("IMPLEMENTED",))
     def log_source(self, loglevel: str = "INFO"):
-        source = self.b.get_source()
+        source = self.b.get_page_source()
         logger.write(source, level=loglevel)
         return source
 
@@ -1172,15 +1191,18 @@ class SeleniumLibraryToBrowser:
 
     @keyword(tags=("IMPLEMENTED",))
     def select_from_list_by_index(self, locator: WebElement, *indexes: str):
-        self.b.select_options_by(locator, SelectAttribute.index, *indexes)
+        selection = self.b.get_selected_options(locator, SelectAttribute.index)
+        self.b.select_options_by(locator, SelectAttribute.index, *[*indexes, *selection])
 
     @keyword(tags=("IMPLEMENTED",))
     def select_from_list_by_label(self, locator: WebElement, *labels: str):
-        self.b.select_options_by(locator, SelectAttribute.label, *labels)
+        selection = self.b.get_selected_options(locator, SelectAttribute.label)
+        self.b.select_options_by(locator, SelectAttribute.label, *[*labels, *selection])
 
     @keyword(tags=("IMPLEMENTED",))
     def select_from_list_by_value(self, locator: WebElement, *values: str):
-        self.b.select_options_by(locator, SelectAttribute.value, *values)
+        selection = self.b.get_selected_options(locator, SelectAttribute.value)
+        self.b.select_options_by(locator, SelectAttribute.value, *[*values, *selection])
 
     @keyword
     def select_radio_button(self, group_name: str, value: str):
@@ -1234,12 +1256,12 @@ class SeleniumLibraryToBrowser:
         raise NotImplementedError("keyword is not implemented")
 
     @keyword(tags=("IMPLEMENTED",))
-    def switch_browser(self, index_or_alias: str, browser: str = "CURRENT"):
+    def switch_browser(self, index_or_alias: str):
         id = self._browser_indexes.get(index_or_alias, None) or self._browser_indexes.get(
             self._browser_aliases.get(index_or_alias), None
         )
         if id is None:
-            raise ValueError(f"Browser '{browser}' not found")
+            raise ValueError(f"Browser '{index_or_alias}' not found")
         return self.b.switch_browser(id)
 
     @keyword
@@ -1326,6 +1348,7 @@ class SeleniumLibraryToBrowser:
         for element in self.b.get_elements(locator):
             if self.b.get_property(element, "nodeName") == "TEXTAREA":
                 self.b.get_text(locator, CONTAINS, expected, message)
+                return
         raise AssertionError("Element is not a textarea")
 
     @keyword(tags=("IMPLEMENTED",))
@@ -1338,6 +1361,7 @@ class SeleniumLibraryToBrowser:
         for element in self.b.get_elements(locator):
             if self.b.get_property(element, "nodeName") == "TEXTAREA":
                 self.b.get_text(locator, EQUALS, expected, message)
+                return
         raise AssertionError("Element is not a textarea")
 
     @keyword(tags=("IMPLEMENTED",))
@@ -1366,6 +1390,7 @@ class SeleniumLibraryToBrowser:
                 "file",
             ]:
                 self.b.get_text(locator, CONTAINS, expected, message)
+                return
         raise AssertionError("Element is not a textfield")
 
     @keyword(tags=("IMPLEMENTED",))
@@ -1394,6 +1419,7 @@ class SeleniumLibraryToBrowser:
                 "file",
             ]:
                 self.b.get_text(locator, EQUALS, expected, message)
+                return
         raise AssertionError("Element is not a textfield")
 
     @keyword(tags=("IMPLEMENTED",))
