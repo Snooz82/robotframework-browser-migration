@@ -1,4 +1,5 @@
 [tool.pylint]
 max-line-length = 100
+disable = "missing-function-docstring,too-many-lines,missing-module-docstring,missing-class-docstring,invalid-name,too-many-arguments,too-many-instance-attributes,redefined-builtin,redefined-outer-name,too-many-public-methods,broad-exception-caught,keyword-arg-before-vararg"
 [tool.black]
 line-length = 100

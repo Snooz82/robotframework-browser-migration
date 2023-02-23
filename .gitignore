@@ -143,3 +143,4 @@ dmypy.json
 keyword_stats.json
 .vscode/
 atest
+results/
