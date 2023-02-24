@@ -4,6 +4,7 @@ import typing
 from datetime import timedelta
 from enum import Enum
 from itertools import count
+from pathlib import Path
 from typing import Any, List, Optional, Union
 
 from Browser import Browser
@@ -321,10 +322,8 @@ class SeleniumLibraryToBrowser:
 
     @keyword(tags=("IMPLEMENTED",))
     def click_button(self, locator: WebElement, modifier: Union[bool, str] = False):
-        if modifier:
-            raise NotImplementedError("Modifier is not implemented")
         locator = self.get_button_locator(locator)
-        self.b.click(selector=locator)
+        self.click_element(locator, modifier)
 
     @keyword(tags=("IMPLEMENTED",))
     def click_element(
@@ -333,9 +332,23 @@ class SeleniumLibraryToBrowser:
         modifier: Union[bool, str] = False,
         action_chain: bool = False,
     ):
-        if modifier:
-            raise NotImplementedError("Modifier is not implemented")
-        self.b.click(selector=locator)
+        kb_modifiers = {
+            "CONTROL": KeyboardModifier.Control,
+            "CTRL": KeyboardModifier.Control,
+            "SHIFT": KeyboardModifier.Shift,
+            "ALT": KeyboardModifier.Alt,
+            "META": KeyboardModifier.Meta,
+            "COMMAND": KeyboardModifier.Meta,
+        }
+        mods = []
+        if modifier and modifier.upper() != "FALSE":
+            logger.console(modifier)
+            modifiers = modifier.split("+")
+            for mod in modifiers:
+                if mod.upper() not in kb_modifiers.keys():
+                    raise ValueError(f"Modifier {mod} is not supported")
+                mods.append(kb_modifiers[mod.upper()])
+        self.b.click(locator, MouseButton.left, 1, None, None, None, False, False, *mods)
 
     @keyword(tags=("IMPLEMENTED",))
     def click_element_at_coordinates(self, locator: WebElement, xoffset: int, yoffset: int):
@@ -350,10 +363,8 @@ class SeleniumLibraryToBrowser:
         """See the Locating elements section for details about the locator syntax.
         When using the default locator strategy, images are searched using id, name, src and alt.
         """
-        if modifier:
-            raise NotImplementedError("Modifier is not implemented")
         locator = self.get_image_locator(locator)
-        self.b.click(selector=locator)
+        self.click_element(locator, modifier)
 
     @keyword(tags=("IMPLEMENTED",))
     def click_link(self, locator: WebElement, modifier: Union[bool, str] = False):
@@ -361,10 +372,8 @@ class SeleniumLibraryToBrowser:
         When using the default locator strategy, links are searched using id, name,
         href and the link text.
         """
-        if modifier:
-            raise NotImplementedError("Modifier is not implemented")
         locator = self.get_link_locator(locator)
-        self.b.click(selector=locator)
+        self.click_element(locator, modifier)
 
     @keyword(tags=("IMPLEMENTED",))
     def close_all_browsers(self):
@@ -527,10 +536,27 @@ class SeleniumLibraryToBrowser:
         "*NOT IMPLEMENTED YET*"
         raise NotImplementedError("keyword is not implemented")
 
-    @keyword
-    def execute_javascript(self, *code: WebElement):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+    @keyword(tags=("IMPLEMENTED",))
+    def execute_javascript(self, *code: str):
+        js = []
+        args = []
+        if "JAVASCRIPT" in code or "ARGUMENTS" in code:
+            scope = js
+            for line in code:
+                if line == "JAVASCRIPT":
+                    scope = js
+                elif line == "ARGUMENTS":
+                    scope = args
+                else:
+                    scope.append(line)
+            javascript = "".join(js)
+        else:
+            javascript = "".join(code)
+        if Path(javascript).is_file():
+            javascript = Path(javascript).read_text(encoding="utf-8")
+        logger.console(javascript)
+        return self.b.evaluate_javascript(None, f"(arguments) => {{{javascript}}}", arg=args or None)
+
 
     @keyword
     def frame_should_contain(self, locator: WebElement, text: str, loglevel: str = "TRACE"):
@@ -666,7 +692,7 @@ class SeleniumLibraryToBrowser:
         "*NOT IMPLEMENTED YET*"
         raise NotImplementedError("keyword is not implemented")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def get_source(self):
         self.b.get_page_source()
 
@@ -768,12 +794,14 @@ class SeleniumLibraryToBrowser:
     def input_password(self, locator: WebElement, password: str, clear: bool = True):
         org_level = BuiltIn().set_log_level(level="NONE")
         try:
+            self.b.press_keys(locator, "End")
             self.input_text(locator, password, clear)
         finally:
             BuiltIn().set_log_level(level=org_level)
 
     @keyword(tags=("IMPLEMENTED",))
     def input_text(self, locator: WebElement, text: str, clear: bool = True):
+        self.b.press_keys(locator, "End")
         self.b.type_text(locator, text, clear=clear)
 
     @keyword
@@ -1164,12 +1192,12 @@ class SeleniumLibraryToBrowser:
                 )
 
     @keyword
-    def press_key(self, locator: WebElement, key: str):
+    def x_press_key(self, locator: WebElement, key: str):
         "*DEPRECATED*"
         raise NotImplementedError("keyword is not implemented")
 
     @keyword
-    def press_keys(self, locator: Optional[WebElement] = None, *keys: str):
+    def x_press_keys(self, locator: Optional[WebElement] = None, *keys: str):
         "*NOT IMPLEMENTED YET*"
         raise NotImplementedError("keyword is not implemented")
 
@@ -1588,7 +1616,7 @@ class SeleniumLibraryToBrowser:
             ConditionInputs.element_states,
             locator,
             VALIDATE,
-            "not bool((readonly | disabled) & value)",
+            "not bool((detached | readonly | disabled) & value)",
             timeout=timeout,
             message=error,
         )
