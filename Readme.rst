@@ -17,7 +17,7 @@ run:
 
 ``pip install robotframework-browser-migration``
 
-for the migration layer library you also need Robot Framework Browser_ installed and initialized as well:
+for the migration layer library you also need `Robot Framework Browser_` installed and initialized as well:
 
 ``pip install robotframework-browser``
 
@@ -31,7 +31,7 @@ and
 SeleniumLibraryToBrowser
 ===================================================
 
-Please find the implemented keywords here in the Keyword Documentation_.
+Please find the implemented keywords here in the `Keyword Documentation_`.
 
 .. _Keyword Documentation: http://robotframework-browser-migration.surge.sh/?tag=IMPLEMENTED
 
