@@ -1192,12 +1192,12 @@ class SeleniumLibraryToBrowser:
                 )
 
     @keyword
-    def x_press_key(self, locator: WebElement, key: str):
+    def press_key(self, locator: WebElement, key: str):
         "*DEPRECATED*"
         raise NotImplementedError("keyword is not implemented")
 
     @keyword
-    def x_press_keys(self, locator: Optional[WebElement] = None, *keys: str):
+    def press_keys(self, locator: Optional[WebElement] = None, *keys: str):
         "*NOT IMPLEMENTED YET*"
         raise NotImplementedError("keyword is not implemented")
 
