@@ -1,4 +1,6 @@
 #!/bin/zsh
+libdoc SeleniumLibraryToBrowser doc/index.html
+
 check-manifest --update
 rm -f dist/*.*
 python setup.py bdist_wheel sdist

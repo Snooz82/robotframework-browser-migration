@@ -898,7 +898,7 @@ class SeleniumLibraryToBrowser:
     ):
         browser_enum, headless = BROWSERS.get(browser, (SupportedBrowsers.chromium, False))
         ids = self.b.new_persistent_context(
-            url=url, browser=browser_enum, args=options, headless=headless
+            url=url, browser=browser_enum, args=options, headless=headless, viewport=None
         )
         identifier = str(next(self._browser_index))
         self._browser_indexes[identifier] = ids[0]

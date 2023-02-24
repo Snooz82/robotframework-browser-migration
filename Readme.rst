@@ -2,29 +2,74 @@
 robotframework-browser-migration
 ===================================================
 
-At the moment just a small statistics tool that helps the Browser-Team to implement
-the right Keywords.
+
+This project contains two things.
+
+1. A small script to analyze your SeleniumLibrary keywords unsed and create a statistic over
+   the usage in your project.
+2. A migration layer library named `SeleniumLibraryToBrowser` that has ~80% of the SeleniumLibrary keywords implemented by Browser library.
+
+
+Installation
+------------
+
+run:
+
+``pip install robotframework-browser-migration``
+
+for the migration layer library you also need Robot Framework Browser_ installed and initialized as well:
+
+``pip install robotframework-browser``
+
+and
+
+``rfbrowser init``
+
+|
+
+===================================================
+SeleniumLibraryToBrowser
+===================================================
+
+Please find the implemented keywords here in the Keyword Documentation_.
+
+.. _Keyword Documentation: http://robotframework-browser-migration.surge.sh/?tag=IMPLEMENTED
+
+Usage:
+
+
+.. code:: robotframework
+
+    *** Settings ***
+    Library  SeleniumLibraryToBrowser
+
+    *** Test Cases ***
+    My Test Case
+        Open Browser  https://robocon.io  chrome
+        Location Should Be     https://robocon.io/
+        ${hamburger}=    Run Keyword And Return Status    Element Should Be Visible    css:.hamburger
+        IF    ${hamburger}     Click Button    css:.hamburger
+        Click Link     RBCN22
+        Location Should Be     https://robocon.io/2022
+        Close All Browsers
+
+
+Be aware that some keywords will never be implemented and others are just barely compatible.
+Like ``Open Browser`` is really recommented to use the Browser library ``New Browser/New Context/New Page`` or ``New Persistent Context`` instead.
+
+
+===================================================
+SeleniumStats
+===================================================
 
 We want to know which keywords are massively used in our community.
-In the first step we would like to get this information to know which Keywords are missing
+In the first step we would like to get this information to know which keywords are missing
 in Browser Library.
 
 Later we also will show you which of your keywords are already replaceable by Browser and
 how to do so.
 
 We appreciate your help!
-
-|
-
-Installation
-------------
-
-If you already have Python >= 3.6 with pip installed, you can simply
-run:
-
-``pip install robotframework-browser-migration``
-
-If you have Python 2 ... i am very sorry! Please update!
 
 |
 
@@ -117,4 +162,3 @@ Thank you very much!!!
 ----------------------
 The Browser-Team
 
-    
