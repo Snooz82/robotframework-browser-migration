@@ -26,6 +26,9 @@ VALIDATE = AO["validate"]
 GREATER_THAN = AO[">"]
 
 
+__version__ = "0.6.1"
+
+
 class WebElement(str):
     # self._key_attrs = {
     #         None: ["@id", "@name"],
