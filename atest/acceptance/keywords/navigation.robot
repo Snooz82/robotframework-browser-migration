@@ -84,7 +84,6 @@ Click Link With Text And Image
     Verify Location Is "index.html"
 
 Target Opens in New Window
-    [Tags]    NotImplemented
     Cannot Be Executed in IE
     Click Link    Target opens in new window
     Wait Until Keyword Succeeds    5    1    Wait Until Window Is Open

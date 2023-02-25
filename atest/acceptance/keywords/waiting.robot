@@ -5,7 +5,6 @@ Force Tags        Known Issue Internet Explorer
 
 *** Test Cases ***
 Wait For Condition
-    [Tags]    NotImplemented
     Title Should Be    Original
     Wait For Condition    return window.document.title == "Changed"
     Run Keyword And Expect Error
@@ -13,7 +12,6 @@ Wait For Condition
     ...    Wait For Condition    return window.document.title == "Invalid"    ${0.1}
 
 Wait For Condition Comlext Wait
-    [Tags]    NotImplemented
     Wait For Condition    style = document.querySelector('#content').style; return style.background == 'red' && style.color == 'white'
 
 Wait For Condition requires `return`

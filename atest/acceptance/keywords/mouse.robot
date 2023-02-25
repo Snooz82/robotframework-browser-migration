@@ -46,6 +46,5 @@ Mouse Up
     ...    Mouse Up    not_there
 
 Simulate Event
-    [Tags]    NotImplemented
     Simulate event    el_for_blur    blur
     Textfield Value Should Be    el_for_blur    blur el_for_blur

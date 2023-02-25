@@ -4,7 +4,6 @@ Suite Setup       Set Global Timeout    1 second
 Test Setup        Go To Page "javascript/alert.html"
 Suite Teardown    Restore Global Timeout
 Resource          ../resource.robot
-Test Tags         NotImplemented
 
 *** Test Cases ***
 Handle Alert Different Timeouts Types Str None

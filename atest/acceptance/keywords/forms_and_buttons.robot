@@ -7,13 +7,11 @@ ${FORM SUBMITTED}    forms/submit.html
 
 *** Test Cases ***
 Submit Form
-    [Tags]    NotImplemented
     [Documentation]    LOG 1 Submitting form 'form_name'.
     Submit Form    form_name
     Verify Location Is "${FORM SUBMITTED}"
 
 Submit Form Without Args
-    [Tags]    NotImplemented
     [Setup]    Go To Page "forms/form_without_name.html"
     Submit Form
     Verify Location Is "target/first.html"

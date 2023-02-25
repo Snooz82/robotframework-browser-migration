@@ -3,7 +3,7 @@ Suite Setup       Run Keywords    Go To Front Page    Set Info Loglevel
 Test Teardown     Register Keyword to Run On Failure    Nothing
 Suite Teardown    Set Debug Loglevel
 Resource          ../resource.robot
-Force Tags        Known Issue Internet Explorer    NotImplemented
+Force Tags        Known Issue Internet Explorer
 
 *** Variables ***
 ${PAGE TITLE}     (root)/index.html

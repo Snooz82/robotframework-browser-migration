@@ -2,7 +2,6 @@
 Test Setup        Go To Page "forms/input_special_keys.html"
 Resource          ../resource.robot
 Library           ../../resources/testlibs/ctrl_or_command.py
-Test Tags         NotImplemented
 
 *** Variables ***
 ${CTRL_OR_COMMAND}    ${EMPTY}

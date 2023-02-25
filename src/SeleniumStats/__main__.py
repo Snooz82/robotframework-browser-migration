@@ -5,6 +5,11 @@ import sys
 
 from robot.api import ExecutionResult, ResultVisitor
 from robot.model import TestCase, TestSuite
+try:
+    from SeleniumLibraryToBrowser import SeleniumLibraryToBrowser
+    sl2b = SeleniumLibraryToBrowser()
+except ImportError:
+    sl2b = None
 
 
 class KeywordCall:
@@ -25,7 +30,7 @@ KEYWORD_CALLS = dict()
 
 class ResultAnalyzer(ResultVisitor):
     def start_keyword(self, keyword):
-        if keyword.libname == "SeleniumLibrary":
+        if keyword.libname in ["SeleniumLibrary", "SeleniumLibraryToBrowser"]:
             # next we are hashing the names of the calling keywords, test cases or test suites
             # because we never want to store your names even temporarily!
             # the hashes just allows us to count the different calling parents.
@@ -39,7 +44,7 @@ class ResultAnalyzer(ResultVisitor):
                 parent_hash = hashlib.sha3_512(
                     f"{keyword.parent.libname}{keyword.parent.name}".encode("UTF-8")
                 ).hexdigest()[16:32]
-            kw_name = keyword.name[16:]
+            kw_name = keyword.name[len(keyword.libname)+1:]
             if kw_name not in KEYWORD_CALLS:
                 KEYWORD_CALLS[kw_name] = KeywordCall(parent_hash)
             else:
@@ -69,16 +74,18 @@ class ResultAnalyzer(ResultVisitor):
             longest_keyword = (
                 current_length if current_length > longest_keyword else longest_keyword
             )
-        print(f'+-{"".ljust(longest_keyword, "-")       }-+-------+---------+')
-        print(f'| {"Keyword".ljust(longest_keyword, " ")} | count | parents |')
-        print(f'+-{"".ljust(longest_keyword, "-")       }-+-------+---------+')
+        print(f'+-{"".ljust(longest_keyword, "-")       }-+-------+---------+------------------+')
+        print(f'| {"Keyword".ljust(longest_keyword, " ")} | count | parents | migration status |')
+        print(f'+-{"".ljust(longest_keyword, "-")       }-+-------+---------+------------------+')
         for kw_name in kw_calls:
+            implemented = sl2b.keyword_implemented(kw_name.lower().replace(" ", "_")) if sl2b else False
             print(
                 f'| {kw_name.ljust(longest_keyword , " ")} |'
                 f' {str(kw_calls[kw_name]["call_count"]).ljust(5," ")} |'
                 f' {str(kw_calls[kw_name]["parent_count"]).ljust(7, " ")} |'
+                f' {str((not implemented) * "missing").ljust(16, " ")} |'
             )
-        print(f'+-{"".ljust(longest_keyword, "-")}-+-------+---------+')
+        print(f'+-{"".ljust(longest_keyword, "-")}-+-------+---------+------------------+')
 
 
 if __name__ == "__main__":
@@ -92,3 +99,6 @@ if __name__ == "__main__":
         print(
             "Use the path to a output.xml as first arguemnt.  Example:  python -m SeleniumStats ../output.xml"
         )
+
+    # normalized_keywords = [
+    # kw.lower().replace("_", "") for kw in sl2b.get_keyword_names() if "IMPLEMENTED" not in sl2b.get_keyword_tags(kw)]

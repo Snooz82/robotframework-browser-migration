@@ -3,7 +3,6 @@ Documentation     Tests asynchronous javascript
 Suite Teardown    Set Selenium Timeout    5 seconds
 Test Setup        Go To Page "javascript/dynamic_content.html"
 Resource          ../resource.robot
-Force Tags        NotImplemented
 
 *** Test Cases ***
 Should Not Timeout If Callback Invoked Immediately

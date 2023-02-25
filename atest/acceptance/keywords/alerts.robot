@@ -1,5 +1,5 @@
 *** Settings ***
-Force Tags        Known Issue Safari    NotImplemented
+Force Tags        Known Issue Safari
 Suite Setup       Set Global Timeout    1 second
 Test Setup        Go To Page "javascript/alert.html"
 Suite Teardown    Restore Global Timeout

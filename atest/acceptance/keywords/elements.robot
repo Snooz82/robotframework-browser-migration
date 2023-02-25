@@ -43,7 +43,6 @@ More Get Elements
     END
 
 Assign Id To Element
-    [Tags]    NotImplemented
     Page Should Not Contain Element    my id
     Assign ID to Element    xpath=//div[@id="first_div"]    my id
     Page Should Contain Element    my id
@@ -51,7 +50,6 @@ Assign Id To Element
     Page Should Not Contain Element    my id
 
 Get Element Attribute
-    [Tags]    NotImplemented
     ${id}=    Get Element Attribute    link:Link with id    id
     Should Be Equal    ${id}    some_id
     ${id}=    Get Element Attribute    dom:document.getElementsByTagName('a')[3]    id
@@ -118,26 +116,22 @@ Get Empty Element Size
     Should be Equal    ${height}    ${0}
 
 Cover Element
-    [Tags]    NotImplemented
     Cover Element  //img[@src="image.jpg"]
     Element Should Not be Visible  //img[@src="image.jpg"]
     Element Should be Visible  //div[@name="covered"]
 
 Cover Element should cover all matching elements
-    [Tags]    NotImplemented
     Cover Element  //img[@src="image.jpg"]
     Element Should Not be Visible  //img[@src="image.jpg"]
     ${count}  Get Element Count  //div[@name="covered"]
     Should Be equal As Integers  ${count}  2
 
 Cover Element can cover just one element
-    [Tags]    NotImplemented
     Cover Element  (//img[@src="image.jpg"])[1]
     Element Should be Visible  //img[@src="image.jpg"]
     ${count}  Get Element Count  //div[@name="covered"]
     Should Be equal As Integers  ${count}  1
 
 Cover Elements should throw exception when locator is invalid
-    [Tags]    NotImplemented
     Run Keyword And Expect Error  No element with locator '//img?@src="inexistent"?' found.
     ...  Cover Element  //img[@src="inexistent"]

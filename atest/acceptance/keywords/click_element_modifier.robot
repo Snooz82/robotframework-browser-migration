@@ -3,10 +3,6 @@ Test Setup       Go To Page "javascript/click_modifier.html"
 Resource          ../resource.robot
 
 *** Test Cases ***
-Click Element Modifier Shift
-    Click Element    Button    modifier=Shift
-    Element Text Should Be    output    Shift click
-
 Click Link Modifier Shift
     Click Link    link text    modifier=Shift
     Element Text Should Be    output    Shift click

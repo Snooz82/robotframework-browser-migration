@@ -4,7 +4,6 @@ Suite Setup       Go To Page "cookies.html"
 Suite Teardown    Delete All Cookies
 Test Setup        Add Cookies
 Resource          ../resource.robot
-Test Tags         NotImplemented
 
 *** Test Cases ***
 Get Cookies

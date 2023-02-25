@@ -6,18 +6,15 @@ Resource          ../resource.robot
 
 *** Test Cases ***
 Frame Should Contain
-    [Tags]    NotImplemented
     Frame Should contain    right    You're looking at right.
     Frame Should Contain    left    Links
 
 Frame Should Contain should also work with iframes
-    [Tags]    NotImplemented
     [Setup]    Go To Page "frames/iframes.html"
     Frame Should contain    right    You're looking at right.
     Frame Should Contain    left    Links
 
 Current Frame Should (Not) Contain
-    [Tags]    NotImplemented
     Select Frame    left
     Current Frame Should Contain    This is LEFT side.
     Current Frame Should Not Contain   RIGHT
@@ -36,7 +33,6 @@ Page Should Contain Text Within Frames should also work with iframes
     Page Should Contain    Links
 
 Select And Unselect Frame
-    [Tags]    NotImplemented
     [Documentation]    LOG 1 Selecting frame 'left'.
     Select Frame    left
     Click Link    foo
@@ -45,7 +41,6 @@ Select And Unselect Frame
     Current Frame Should Contain    You're looking at foo.
 
 Select And Unselect Frame should also work with iframes
-    [Tags]    NotImplemented
     [Setup]    Go To Page "frames/iframes.html"
     Select Frame    left
     Click Link    foo
@@ -54,7 +49,6 @@ Select And Unselect Frame should also work with iframes
     Current Frame Should Contain    You're looking at foo.
 
 Select Frame with non-unique name attribute
-    [Tags]    NotImplemented
     [Setup]    Go To Page "frames/poorlynamedframe.html"
     Run Keyword And Expect Error    *    Select Frame    left
     Select Frame    xpath=//frame[@name='left']|//iframe[@name='left']

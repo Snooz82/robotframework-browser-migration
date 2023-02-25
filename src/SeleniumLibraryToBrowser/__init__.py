@@ -10,10 +10,22 @@ from typing import Any, List, Optional, Union
 from Browser import Browser
 from Browser.assertion_engine import AssertionOperator as AO
 from Browser.utils.data_types import *
-from robot.api import logger
-from robot.api.deco import keyword, library
+from robot.api import logger, SkipExecution
+from robot.api.deco import library
+from robot.running import EXECUTION_CONTEXTS
 from robot.libraries.BuiltIn import BuiltIn
+from robot.result.model import Message
+from robot.result.model import TestCase as ResultTestCase
+from robot.running.model import TestCase
 from robot.utils import DotDict, secs_to_timestr
+
+from robotlibcore import DynamicCore, keyword
+
+try:
+    from SeleniumLibrary import SeleniumLibrary
+except ImportError:
+    SeleniumLibrary = None
+
 
 EQUALS = AO["=="]
 NOT_EQUALS = AO["!="]
@@ -26,7 +38,7 @@ VALIDATE = AO["validate"]
 GREATER_THAN = AO[">"]
 
 
-__version__ = "0.6.1"
+__version__ = "0.8.0"
 
 
 class WebElement(str):
@@ -148,8 +160,97 @@ BROWSERS = {
 }
 
 
+class V3Listener:
+    ROBOT_LISTENER_API_VERSION = 3
+
+    def __init__(self, library):
+        self.library = library
+        self.depr = False
+
+    def start_test(self, _test: TestCase, _result: ResultTestCase):
+        self.depr = False
+
+    def end_test(self, _test: TestCase, result: ResultTestCase):
+        if self.depr and BuiltIn()._context.dry_run:
+            result.status = "SKIP"
+
+    def log_message(self, message: Message):
+        if (
+            message.level == "WARN"
+            and "is deprecated" in message.message
+            and BuiltIn()._context.dry_run
+        ):
+            self.depr = True
+
+
 @library(converters={WebElement: WebElement.from_string})
-class SeleniumLibraryToBrowser:
+class SeleniumLibraryToBrowser(DynamicCore):
+    """General library documentation."""
+
+    ROBOT_LIBRARY_SCOPE = "GLOBAL"
+    ROBOT_LIBRARY_VERSION = __version__
+
+    def __init__(
+            self,
+            timeout=timedelta(seconds=5.0),
+            implicit_wait=timedelta(seconds=0.0),
+            run_on_failure="Capture Page Screenshot",
+            screenshot_root_directory: Optional[str] = None,
+            plugins: Optional[str] = None,
+            event_firing_webdriver: Optional[str] = None,
+            browser_args: Optional[List[str]] = None,
+    ):
+        """Library init doc."""
+        sl2b = SLtoB(
+            timeout=timeout,
+            implicit_wait=implicit_wait,
+            run_on_failure=run_on_failure,
+            screenshot_root_directory=screenshot_root_directory,
+            plugins=plugins,
+            event_firing_webdriver=event_firing_webdriver,
+            browser_args=browser_args,
+        )
+        components = [sl2b]
+        super().__init__(components)
+        self.sl = SeleniumLibrary() if SeleniumLibrary else None
+
+    @property
+    def dry_run(self):
+        ctx = EXECUTION_CONTEXTS.current
+        return ctx.dry_run if ctx else False
+
+    def keyword_implemented(self, name):
+        return "IMPLEMENTED" in self.get_keyword_tags(name)
+
+    def run_keyword(self, name, args, kwargs=None):
+        if not self.keyword_implemented(name):
+            raise SkipExecution(f"Keyword '{name.replace('_', ' ').title() }' is not implemented")
+        return super().run_keyword(name, args, kwargs)
+
+    def get_keyword_names(self):
+        if self.dry_run:
+            return [kw for kw in super().get_keyword_names() if self.keyword_implemented(kw)]
+        return super().get_keyword_names()
+
+    def get_keyword_documentation(self, name):
+        if name == "__intro__":
+            return self.__doc__
+        if name == "__init__":
+            return self.__init__.__doc__
+        if not EXECUTION_CONTEXTS.current and not self.keyword_implemented(name):
+            return "*DEPRECATED* keyword is not implemented yet."
+        if not self.keyword_implemented(name):
+            return "KEYWORD IS NOT YET IMPLEMENTED."
+        try:
+            name = getattr(self.sl, name).robot_name or name
+            return self.sl.get_keyword_documentation(name)
+        except:
+            pass
+        return super().get_keyword_documentation(name)
+
+
+
+class SLtoB:
     def __init__(
         self,
         timeout=timedelta(seconds=5.0),
@@ -253,15 +354,13 @@ class SeleniumLibraryToBrowser:
         secure: Optional[bool] = None,
         expiry: Optional[str] = None,
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword
     def add_location_strategy(
         self, strategy_name: str, strategy_keyword: str, persist: bool = False
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword
     def alert_should_be_present(
@@ -270,20 +369,17 @@ class SeleniumLibraryToBrowser:
         action: str = "ACCEPT",
         timeout: Optional[timedelta] = None,
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword
     def alert_should_not_be_present(
         self, action: str = "ACCEPT", timeout: Optional[timedelta] = None
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword
     def assign_id_to_element(self, locator: WebElement, id: str):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword(tags=("IMPLEMENTED",))
     def capture_element_screenshot(
@@ -403,25 +499,21 @@ class SeleniumLibraryToBrowser:
 
     @keyword
     def cover_element(self, locator: WebElement):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword
     def create_webdriver(
         self, driver_name: str, alias: Optional[str] = None, kwargs=None, **init_kwargs
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword
     def current_frame_should_contain(self, text: str, loglevel: str = "TRACE"):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword
     def current_frame_should_not_contain(self, text: str, loglevel: str = "TRACE"):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword(tags=("IMPLEMENTED",))
     def delete_all_cookies(self):
@@ -429,8 +521,7 @@ class SeleniumLibraryToBrowser:
 
     @keyword
     def delete_cookie(self, name):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword(tags=("IMPLEMENTED",))
     def double_click_element(self, locator: WebElement):
@@ -536,8 +627,7 @@ class SeleniumLibraryToBrowser:
 
     @keyword
     def execute_async_javascript(self, *code: WebElement):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword(tags=("IMPLEMENTED",))
     def execute_javascript(self, *code: str):
@@ -558,13 +648,13 @@ class SeleniumLibraryToBrowser:
         if Path(javascript).is_file():
             javascript = Path(javascript).read_text(encoding="utf-8")
         logger.console(javascript)
-        return self.b.evaluate_javascript(None, f"(arguments) => {{{javascript}}}", arg=args or None)
-
+        return self.b.evaluate_javascript(
+            None, f"(arguments) => {{{javascript}}}", arg=args or None
+        )
 
     @keyword
     def frame_should_contain(self, locator: WebElement, text: str, loglevel: str = "TRACE"):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword(tags=("IMPLEMENTED",))
     def get_all_links(self):
@@ -683,8 +773,7 @@ class SeleniumLibraryToBrowser:
 
     @keyword
     def get_selenium_speed(self):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword(tags=("IMPLEMENTED",))
     def get_selenium_timeout(self):
@@ -692,8 +781,7 @@ class SeleniumLibraryToBrowser:
 
     @keyword
     def get_session_id(self):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword(tags=("IMPLEMENTED",))
     def get_source(self):
@@ -740,23 +828,19 @@ class SeleniumLibraryToBrowser:
 
     @keyword
     def get_window_handles(self, browser: str = "CURRENT"):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword
     def get_window_identifiers(self, browser: str = "CURRENT"):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword
     def get_window_names(self, browser: str = "CURRENT"):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword
     def get_window_position(self):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword(tags=("IMPLEMENTED",))
     def get_window_size(self, inner: bool = False):
@@ -790,8 +874,7 @@ class SeleniumLibraryToBrowser:
 
     @keyword
     def handle_alert(self, action: str = "ACCEPT", timeout: Optional[timedelta] = None):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword(tags=("IMPLEMENTED",))
     def input_password(self, locator: WebElement, password: str, clear: bool = True):
@@ -811,8 +894,7 @@ class SeleniumLibraryToBrowser:
     def input_text_into_alert(
         self, text: str, action: str = "ACCEPT", timeout: Optional[timedelta] = None
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword(tags=("IMPLEMENTED",))
     def list_selection_should_be(self, locator: WebElement, *expected: str):
@@ -1196,13 +1278,11 @@ class SeleniumLibraryToBrowser:
 
     @keyword
     def press_key(self, locator: WebElement, key: str):
-        "*DEPRECATED*"
         raise NotImplementedError("keyword is not implemented")
 
     @keyword
     def press_keys(self, locator: Optional[WebElement] = None, *keys: str):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword(tags=("IMPLEMENTED",))
     def radio_button_should_be_set_to(self, group_name: str, value: str):
@@ -1234,8 +1314,7 @@ class SeleniumLibraryToBrowser:
 
     @keyword
     def register_keyword_to_run_on_failure(self, keyword: Optional[str]):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword(tags=("IMPLEMENTED",))
     def reload_page(self):
@@ -1243,8 +1322,7 @@ class SeleniumLibraryToBrowser:
 
     @keyword
     def remove_location_strategy(self, strategy_name: str):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword(tags=("IMPLEMENTED",))
     def scroll_element_into_view(self, locator: WebElement):
@@ -1301,8 +1379,7 @@ class SeleniumLibraryToBrowser:
 
     @keyword
     def set_browser_implicit_wait(self, value: timedelta):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword(tags=("IMPLEMENTED",))
     def set_focus_to_element(self, locator: WebElement):
@@ -1310,8 +1387,7 @@ class SeleniumLibraryToBrowser:
 
     @keyword
     def set_screenshot_directory(self, path: Optional[str]):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword(tags=("IMPLEMENTED",))
     def set_selenium_implicit_wait(self, value: timedelta):
@@ -1319,8 +1395,7 @@ class SeleniumLibraryToBrowser:
 
     @keyword
     def set_selenium_speed(self, value: timedelta):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword(tags=("IMPLEMENTED",))
     def set_selenium_timeout(self, value: timedelta):
@@ -1328,8 +1403,7 @@ class SeleniumLibraryToBrowser:
 
     @keyword
     def set_window_position(self, x: int, y: int):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword(tags=("IMPLEMENTED",))
     def set_window_size(self, width: int, height: int, inner: bool = False):
@@ -1337,13 +1411,11 @@ class SeleniumLibraryToBrowser:
 
     @keyword
     def simulate_event(self, locator: WebElement, event: str):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword
     def submit_form(self, locator: Optional[WebElement] = None):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword(tags=("IMPLEMENTED",))
     def switch_browser(self, index_or_alias: str):
@@ -1361,8 +1433,7 @@ class SeleniumLibraryToBrowser:
         timeout: Optional[str] = None,
         browser: str = "CURRENT",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword
     def table_cell_should_contain(
@@ -1373,8 +1444,7 @@ class SeleniumLibraryToBrowser:
         expected: str,
         loglevel: str = "TRACE",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword
     def table_column_should_contain(
@@ -1384,8 +1454,7 @@ class SeleniumLibraryToBrowser:
         expected: str,
         loglevel: str = "TRACE",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword
     def table_footer_should_contain(
@@ -1394,8 +1463,7 @@ class SeleniumLibraryToBrowser:
         expected: str,
         loglevel: str = "TRACE",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword
     def table_header_should_contain(
@@ -1404,8 +1472,7 @@ class SeleniumLibraryToBrowser:
         expected: str,
         loglevel: str = "TRACE",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword
     def table_row_should_contain(
@@ -1415,8 +1482,7 @@ class SeleniumLibraryToBrowser:
         expected: str,
         loglevel: str = "TRACE",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword
     def table_should_contain(
@@ -1425,8 +1491,7 @@ class SeleniumLibraryToBrowser:
         expected: str,
         loglevel: str = "TRACE",
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword(tags=("IMPLEMENTED",))
     def textarea_should_contain(
@@ -1575,8 +1640,7 @@ class SeleniumLibraryToBrowser:
         timeout: Optional[timedelta] = None,
         error: Optional[str] = None,
     ):
-        "*NOT IMPLEMENTED YET*"
-        raise NotImplementedError("keyword is not implemented")
+        ...
 
     @keyword(tags=("IMPLEMENTED",))
     def wait_until_element_contains(

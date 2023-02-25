@@ -12,7 +12,6 @@ Get Value From Text Field
     Should Be Equal    ${text}    ${EMPTY}
 
 Input Text and Input Password
-    [Tags]     NotImplemented
     [Documentation]
     ...    LOG 1 Typing text 'username' into text field 'username_field'.
     ...    LOG 2 Typing password into text field 'password_field'.
@@ -65,7 +64,6 @@ Input Non-ASCII Text
     Should Be Equal    ${text}    Yrjö Ärje
 
 Press Key
-  [Tags]    NotImplemented
   [Setup]  Go To Page "forms/login.html"
   Cannot Be Executed in IE
   Press Key    username_field    James Bon

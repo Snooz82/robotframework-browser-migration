@@ -1,6 +1,6 @@
 #!/bin/zsh
 libdoc SeleniumLibraryToBrowser doc/index.html
-
+surge doc robotframework-browser-migration.surge.sh
 check-manifest --update
 rm -f dist/*.*
 python setup.py bdist_wheel sdist

@@ -57,7 +57,7 @@ Checkbox Should Be Focused
     ...    Element Should Be Focused    xpath=//input[@name='can_send_email']
 
 Select Button Should Be Focused
-    [Tags]    KnownIssue    NotImplemented
+    [Tags]    KnownIssue
     [Setup]    Go To Page "forms/prefilled_email_form.html"
     Mouse Down    xpath=//select[@name='preferred_channel']
     Element Should Be Focused    xpath=//select[@name='preferred_channel']

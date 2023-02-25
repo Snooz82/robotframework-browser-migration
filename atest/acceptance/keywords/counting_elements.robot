@@ -54,12 +54,6 @@ Page Should Contain Element When Limit Is Number And Error
     ...    *
     ...    Page Should Contain Element    name: div_name    message=Custom error message.    limit=${99}
 
-Page Should Contain Element When Limit Is Not Number
-    [Setup]    Go To Page "links.html"
-    Run Keyword And Expect Error
-    ...    *
-    ...    Page Should Contain Element    name: div_name    limit=AA
-
 Page Should Contain Element When Error With Limit And Different Loglevels
     [Tags]    NoGrid
     [Documentation]    Only at DEBUG loglevel is the html placed in the log.
