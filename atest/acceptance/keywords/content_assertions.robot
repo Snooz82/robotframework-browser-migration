@@ -1,5 +1,6 @@
 *** Settings ***
 Documentation     Tests contents
+Suite Setup       Set Selenium Timeout    1 seconds
 Test Setup        Go To Front Page
 Default Tags      assertions
 Resource          ../resource.robot
@@ -19,24 +20,21 @@ Title Should Be
 Page Should Contain
     [Tags]    NoGrid
     [Documentation]    The last step fails and doesn't contain the html content.
-    ...    FAIL Page should have contained text 'non existing text' but did not.
     ...    LOG 1:9 Current page contains text 'needle'.
     ...    LOG 2:9 INFO Current page contains text 'This is the haystack'.
     ...    LOG 3:18 FAIL Page should have contained text 'non existing text' but did not.
     Page Should Contain    needle
     Page Should Contain    This is the haystack
-    Page Should Contain    non existing text
+    Run Keyword And Expect Error    Page should have contained text 'non existing text' but did not.    Page Should Contain    non existing text
 
 Page Should Contain Using Default Custom Log Level
     [Tags]    NoGrid
     [Documentation]    The Page Should Contains using default custom log level (that being
     ...    'TRACE' - noting the excluded second argument for the `Page Should Contain`
     ...    keyword) fails and the log contains the html content.
-    ...    FAIL Page should have contained text 'non existing text' but did not.
     ...    LOG 2:19 TRACE REGEXP: <html.*</html>
-    ...    LOG 2:20 FAIL Page should have contained text 'non existing text' but did not.
     ${old_level}=  Set Log Level    TRACE
-    Page Should Contain    non existing text
+    Run Keyword And Expect Error    Page should have contained text 'non existing text' but did not.    Page Should Contain    non existing text
     [Teardown]    Set Log Level    ${old_level}
 
 Page Should Contain Numbers And String Should Be Same
@@ -52,51 +50,35 @@ Page Should Contain With Text Having Internal Elements
 Page Should Contain With Custom Log Level INFO
     [Tags]    NoGrid
     [Documentation]    Html content is shown at the explicitly specified INFO level.
-    ...    FAIL Page should have contained text 'non existing text' but did not.
-    ...    LOG 1:18 INFO REGEXP: <html.*</html>
-    ...    LOG 1:19 FAIL Page should have contained text 'non existing text' but did not.
-    Page Should Contain    non existing text    INFO
+    Run Keyword And Expect Error   Page should have contained text 'non existing text' but did not.    Page Should Contain    non existing text    INFO
 
 Page Should Contain With Custom Log Level WARN
     [Tags]    NoGrid
     [Documentation]    Html content is shown at the explicitly specified WARN level.
-    ...    FAIL Page should have contained text 'non existing text' but did not.
-    ...    LOG 1:18 WARN REGEXP: <html.*</html>
-    ...    LOG 1:19 FAIL Page should have contained text 'non existing text' but did not.
-    Page Should Contain    non existing text    WARN
+    Run Keyword And Expect Error  Page should have contained text 'non existing text' but did not.    Page Should Contain    non existing text    WARN
 
 Page Should Contain With Custom Log Level DEBUG
     [Tags]    NoGrid
     [Documentation]    Html content is shown at the explicitly specified DEBUG level.
-    ...    FAIL Page should have contained text 'non existing text' but did not.
-    ...    LOG 1:18 DEBUG REGEXP: <html.*</html>
-    ...    LOG 1:19 FAIL Page should have contained text 'non existing text' but did not.
-    Page Should Contain    non existing text    DEBUG
+    Run Keyword And Expect Error    Page should have contained text 'non existing text' but did not.   Page Should Contain    non existing text    DEBUG
 
 Page Should Contain With Custom Log Level TRACE
     [Tags]    NoGrid
     [Documentation]    Html content is shown at the explicitly specified TRACE level.
-    ...    FAIL Page should have contained text 'non existing text' but did not.
-    ...    LOG 2:19 TRACE REGEXP: <html.*</html>
-    ...    LOG 2:20 FAIL Page should have contained text 'non existing text' but did not.
     Set Log Level    TRACE
-    Page Should Contain    non existing text    TRACE
+    Run Keyword And Expect Error    Page should have contained text 'non existing text' but did not.    Page Should Contain    non existing text    TRACE
     [Teardown]    Set Log Level    DEBUG
 
 Page Should Contain With Custom Log Level NONE
     [Tags]    NoGrid
     [Documentation]    Html content is not shown because the loglevel is set to NONE.
-    ...    FAIL Page should have contained text 'non existing text' but did not.
-    ...    LOG 1:18 FAIL Page should have contained text 'non existing text' but did not.
-    Page Should Contain    non existing text    NONE
+    Run Keyword And Expect Error   Page should have contained text 'non existing text' but did not.    Page Should Contain    non existing text    NONE
 
 Page Should Contain With Custom Log Level Below Current Log Level
     [Tags]    NoGrid
     [Documentation]    Html content is not shown when custom log level is below curent log level.
-    ...    FAIL Page should have contained text 'non existing text' but did not.
-    ...    LOG 2:18 FAIL Page should have contained text 'non existing text' but did not.
     ${old_level}=  Set Log Level    DEBUG
-    Page Should Contain    non existing text    TRACE
+    Run Keyword And Expect Error   Page should have contained text 'non existing text' but did not.    Page Should Contain    non existing text    TRACE
     [Teardown]    Set Log Level    ${old_level}
 
 Page Should Contain With Disabling Source Logging
@@ -114,11 +96,9 @@ Page Should Contain With Frames
 Page Should Not Contain
     [Tags]    NoGrid
     [Documentation]    Default log level does not have html output.
-    ...    FAIL Page should not have contained text 'needle'.
     ...    LOG 1:14 Current page does not contain text 'non existing text'.
-    ...    LOG 2:13 FAIL Page should not have contained text 'needle'.
     Page Should Not Contain    non existing text
-    Page Should Not Contain    needle
+    Run Keyword And Expect Error    Page should not have contained text 'needle'.    Page Should Not Contain    needle
 
 Page Should Not Contain With Custom Log Level
     [Tags]    NoGrid

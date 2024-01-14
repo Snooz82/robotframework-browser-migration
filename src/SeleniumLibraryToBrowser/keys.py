@@ -1,7 +1,9 @@
 from enum import Enum
 
+
 class Keys(Enum):
     """Set of special keys codes."""
+
     NULL = ""
     CANCEL = "Cancel"  # ^break
     HELP = "Help"

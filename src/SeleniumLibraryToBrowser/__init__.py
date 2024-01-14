@@ -21,6 +21,7 @@ from robotlibcore import DynamicCore, keyword
 from SeleniumLibraryToBrowser.keys import Keys
 
 from .errors import ElementNotFound
+
 try:
     from SeleniumLibrary import SeleniumLibrary
 except ImportError:
@@ -145,7 +146,7 @@ class WebElement(str):
         return new_locator
 
     @staticmethod
-    def is_default(locator: str) -> bool:
+    def is_default(locator: str):
         match = re.fullmatch(r"\[id='(.*)'], \[name='(.*)']", locator)
         if match and match.group(1) == match.group(2):
             return match.group(1)
@@ -289,10 +290,11 @@ class SLtoB:
         return self._browser
 
     def get_button_locator(self, locator: WebElement) -> WebElement:
+        original_locator = locator.original_locator
         loc = WebElement.is_default(locator)
         if loc:
             loc = loc.replace('"', '\\"')
-            locator = (
+            locator = WebElement(
                 "xpath="
                 f'//button[@id="{loc}"]|'
                 f'//button[@name="{loc}"]|'
@@ -303,9 +305,11 @@ class SLtoB:
                 f'//input[@value="{loc}"]|'
                 f'//input[.="{loc}"]'
             )
+            locator.original_locator = original_locator
         return locator
 
     def get_link_locator(self, locator: WebElement) -> WebElement:
+        original_locator = locator.original_locator
         loc = WebElement.is_default(locator)
         if loc:
             xpath = (
@@ -316,28 +320,33 @@ class SLtoB:
             )
             if '"' in loc:
                 xpath = xpath.replace('"', "'")
-            locator = xpath.format(loc=loc)
+            locator = WebElement(xpath.format(loc=loc))
+            locator.original_locator = original_locator
         return locator
 
     def get_image_locator(self, locator: WebElement) -> WebElement:
+        original_locator = locator.original_locator
         loc = WebElement.is_default(locator)
         if loc:
-            locator = (
+            locator = WebElement(
                 f'xpath=//img[@id="{loc}"] | '
                 f'//img[@name="{loc}"] | '
                 f'//img[@src="{loc}"] | '
                 f'//img[@alt="{loc}"]'
             )
+            locator.original_locator = original_locator
         return locator
 
     def get_list_locator(self, locator: WebElement) -> WebElement:
+        original_locator = locator.original_locator
         loc = WebElement.is_default(locator)
         if loc:
-            locator = (
+            locator = WebElement(
                 f'xpath=//select[@id="{loc}"] | '
                 f'//select[@name="{loc}"] | '
                 f'//select[@value="{loc}"]'
             )
+            locator.original_locator = original_locator
         return locator
 
     def page_contains(self, locator):
@@ -401,7 +410,7 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def checkbox_should_be_selected(self, locator: WebElement):
-        logger.info(f"Verifying checkbox '{locator}' is selected.")
+        logger.info(f"Verifying checkbox '{locator.original_locator}' is selected.")
         if not (
             self.b.get_attribute(locator, "type").lower() == "checkbox"
             and self.b.get_property(locator, "nodeName") == "INPUT"
@@ -424,7 +433,9 @@ class SLtoB:
         try:
             self.b.get_checkbox_state(locator, EQUALS, False)
         except AssertionError as e:
-            raise AssertionError(f"Checkbox '{locator.original_locator}' should not have been selected.") from e
+            raise AssertionError(
+                f"Checkbox '{locator.original_locator}' should not have been selected."
+            ) from e
 
     @keyword(tags=("IMPLEMENTED",))
     def choose_file(self, locator: WebElement, file_path: str):
@@ -450,20 +461,26 @@ class SLtoB:
         if modifier and modifier.upper() != "FALSE":
             logger.console(modifier)
             modifiers = modifier.split("+")
+        else:
+            logger.info(f"Clicking element '{locator.original_locator}'.")
         try:
             for mod in modifiers:
                 if mod.upper() not in dict(Keys.__members__):
                     raise ValueError(f"'{mod.upper()}' modifier does not match to Selenium Keys")
                 self.b.keyboard_key(KeyAction.down, Keys[mod.upper()].value)
-
             self.b.click_with_options(locator, MouseButton.left)
+        except ValueError as e:
+            raise e
+        except Exception as e:
+            raise ElementNotFound(
+                f"Element with locator '{locator.original_locator}' not found."
+            ) from e
         finally:
             for mod in reversed(modifiers):
                 try:
                     self.b.keyboard_key(KeyAction.up, Keys[mod.upper()].value)
                 except:
                     pass
-
 
     @keyword(tags=("IMPLEMENTED",))
     def click_element_at_coordinates(self, locator: WebElement, xoffset: int, yoffset: int):
@@ -541,7 +558,13 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def double_click_element(self, locator: WebElement):
-        self.b.click_with_options(locator, clickCount=2, delay=timedelta(milliseconds=100))
+        logger.info(f"Double clicking element '{locator.original_locator}'.")
+        try:
+            self.b.click_with_options(locator, clickCount=2, delay=timedelta(milliseconds=100))
+        except Exception as e:
+            raise ElementNotFound(
+                f"Element with locator '{locator.original_locator}' not found."
+            ) from e
 
     @keyword(tags=("IMPLEMENTED",))
     def drag_and_drop(self, locator: WebElement, target: WebElement):
@@ -584,13 +607,22 @@ class SLtoB:
         expected: Optional[str],
         message: Optional[str] = None,
         ignore_case: bool = False,
-    ):
+    ):  
+        try:
+            value = self.b.get_text(locator)
+        except Exception as e:
+            raise ElementNotFound(
+                f"Element with locator '{locator.original_locator}' not found."
+            ) from e
+        msg = (
+            message
+            or f"Element '{locator.original_locator}' should have contained text '{expected}' but its text was '{value}'."
+        )
         if ignore_case:
-            self.b.get_text(
-                locator, VALIDATE, f"'''{expected}'''.lower() in value.lower()", message
-            )
-        else:
-            self.b.get_text(locator, CONTAINS, expected, message)
+            expected = expected.lower()
+            value = value.lower()
+        if expected not in value:
+            raise AssertionError(msg)
 
     @keyword(tags=("IMPLEMENTED",))
     def element_should_not_be_visible(self, locator: WebElement, message: Optional[str] = None):
@@ -604,12 +636,21 @@ class SLtoB:
         message: Optional[str] = None,
         ignore_case: bool = False,
     ):
+        msg = (
+            message
+            or f"Element '{locator.original_locator}' should not contain text '{expected}' but it did."
+        )
+        try:
+            value = self.b.get_text(locator)
+        except Exception as e:
+            raise ElementNotFound(
+                f"Element with locator '{locator.original_locator}' not found."
+            ) from e
         if ignore_case:
-            self.b.get_text(
-                locator, VALIDATE, f"'''{expected}'''.lower() not in value.lower()", message
-            )
-        else:
-            self.b.get_text(locator, AO["not contains"], expected, message)
+            expected = expected.lower()
+            value = value.lower()
+        if expected in value:
+            raise AssertionError(msg)
 
     @keyword(tags=("IMPLEMENTED",))
     def element_text_should_be(
@@ -619,12 +660,17 @@ class SLtoB:
         message: Optional[str] = None,
         ignore_case: bool = False,
     ):
+        value = self.b.get_text(locator)
+        msg = (
+            message
+            or f"The text of element '{locator.original_locator}' should have been '{expected}' but it was '{value}'."
+        )
         if ignore_case:
-            self.b.get_text(
-                locator, VALIDATE, f"'''{expected}'''.lower() == value.lower()", message
-            )
-        else:
-            self.b.get_text(locator, EQUALS, expected, message)
+            expected = expected.lower()
+            value = value.lower()
+        if expected != value:
+            raise AssertionError(msg)
+            
 
     @keyword(tags=("IMPLEMENTED",))
     def element_text_should_not_be(
@@ -634,12 +680,16 @@ class SLtoB:
         message: Optional[str] = None,
         ignore_case: bool = False,
     ):
+        msg = (
+            message
+            or f"The text of element '{locator.original_locator}' was not supposed to be '{not_expected}'."
+        )
+        value = self.b.get_text(locator)
         if ignore_case:
-            self.b.get_text(
-                locator, VALIDATE, f"'''{not_expected}'''.lower() not in value.lower()", message
-            )
-        else:
-            self.b.get_text(locator, NOT_EQUALS, not_expected, message)
+            not_expected = not_expected.lower()
+            value = value.lower()
+        if not_expected == value:
+            raise AssertionError(msg)
 
     @keyword
     def execute_async_javascript(self, *code: WebElement):
@@ -820,7 +870,12 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def get_text(self, locator: WebElement):
-        return self.b.get_text(locator)
+        try:
+            return self.b.get_text(locator)
+        except Exception as e:
+            raise ElementNotFound(
+                f"Element with locator '{locator.original_locator}' not found."
+            ) from e
 
     @keyword(tags=("IMPLEMENTED",))
     def get_title(self):
@@ -940,6 +995,8 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def log_source(self, loglevel: str = "INFO"):
+        if loglevel.upper() == "NONE":
+            return
         source = self.b.get_page_source()
         logger.write(source, level=loglevel)
         return source
@@ -1013,7 +1070,9 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_contain(self, text: str, loglevel: str = "TRACE"):
-        assert self.page_contains(f"text={text}"), f"Page should have contained text '{text}' but did not."
+        assert self.page_contains(
+            f"text={text}"
+        ), f"Page should have contained text '{text}' but did not."
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_button(
@@ -1027,7 +1086,10 @@ class SLtoB:
             if self.b.get_property(element, "nodeName") in ["INPUT", "BUTTON"]:
                 return
         self.log_source(loglevel)
-        raise AssertionError(message or f"Page should have contained button '{locator.original_locator}' but did not.")
+        raise AssertionError(
+            message
+            or f"Page should have contained button '{locator.original_locator}' but did not."
+        )
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_checkbox(
@@ -1044,7 +1106,10 @@ class SLtoB:
             ):
                 return
         self.log_source(loglevel)
-        raise AssertionError(message or f"Page should have contained checkbox '{locator.original_locator}' but did not.")
+        raise AssertionError(
+            message
+            or f"Page should have contained checkbox '{locator.original_locator}' but did not."
+        )
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_element(
@@ -1070,7 +1135,10 @@ class SLtoB:
             )
         if not count:
             self.log_source(loglevel)
-            raise AssertionError(message or f"Page should have contained element '{locator.original_locator}' but did not.")
+            raise AssertionError(
+                message
+                or f"Page should have contained element '{locator.original_locator}' but did not."
+            )
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_image(
@@ -1084,7 +1152,9 @@ class SLtoB:
             if self.b.get_property(element, "nodeName") == "IMG":
                 return
         self.log_source(loglevel)
-        raise AssertionError(message or f"Page should have contained image '{locator.original_locator}' but did not.")
+        raise AssertionError(
+            message or f"Page should have contained image '{locator.original_locator}' but did not."
+        )
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_link(
@@ -1098,7 +1168,9 @@ class SLtoB:
             if self.b.get_property(element, "nodeName") == "A":
                 return
         self.log_source(loglevel)
-        raise AssertionError(message or f"Page should have contained link '{locator.original_locator}' but did not.")
+        raise AssertionError(
+            message or f"Page should have contained link '{locator.original_locator}' but did not."
+        )
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_list(
@@ -1111,7 +1183,9 @@ class SLtoB:
             if self.b.get_property(element, "nodeName") == "SELECT":
                 return
         self.log_source(loglevel)
-        raise AssertionError(message or f"Page should have contained list '{locator.original_locator}' but did not.")
+        raise AssertionError(
+            message or f"Page should have contained list '{locator.original_locator}' but did not."
+        )
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_radio_button(
@@ -1127,7 +1201,10 @@ class SLtoB:
             ):
                 return
         self.log_source(loglevel)
-        raise AssertionError(message or f"Page should have contained radio button '{locator.original_locator}' but did not.")
+        raise AssertionError(
+            message
+            or f"Page should have contained radio button '{locator.original_locator}' but did not."
+        )
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_textfield(
@@ -1156,14 +1233,17 @@ class SLtoB:
             ]:
                 return
         self.log_source(loglevel)
-        raise AssertionError(message or f"Page should have contained textfield '{locator.original_locator}' but did not.")
+        raise AssertionError(
+            message
+            or f"Page should have contained text field '{locator.original_locator}' but did not."
+        )
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_not_contain(self, text: str, loglevel: str = "TRACE"):
         try:
             assert not self.page_contains(
                 f"text={text}"
-            ), f"Page should have not contained text '{text}'"
+            ), f"Page should not have contained text '{text}'."
         except AssertionError as e:
             self.log_source(loglevel)
             raise e
@@ -1177,10 +1257,16 @@ class SLtoB:
     ):
         locator = self.get_button_locator(locator)
         for element in self.b.get_elements(locator):
-            if self.b.get_property(element, "nodeName") in ["INPUT", "BUTTON"]:
+            node = self.b.get_property(element, "nodeName")
+            if  node == "INPUT":
                 self.log_source(loglevel)
                 raise AssertionError(
-                    message or f"Page should have not contained button '{locator}'"
+                    message or f"Page should not have contained input '{locator.original_locator}'."
+                )
+            elif node == "BUTTON":
+                self.log_source(loglevel)
+                raise AssertionError(
+                    message or f"Page should not have contained button '{locator.original_locator}'."
                 )
 
     @keyword(tags=("IMPLEMENTED",))
@@ -1197,7 +1283,7 @@ class SLtoB:
             ):
                 self.log_source(loglevel)
                 raise AssertionError(
-                    message or f"Page should have not contained checkbox '{locator}'"
+                    message or f"Page should not have contained checkbox '{locator.original_locator}'."
                 )
 
     @keyword(tags=("IMPLEMENTED",))
@@ -1209,7 +1295,9 @@ class SLtoB:
     ):
         if self.b.get_element_count(locator):
             self.log_source(loglevel)
-            raise AssertionError(message or f"Page should have not contained element '{locator.original_locator}'")
+            raise AssertionError(
+                message or f"Page should not have contained element '{locator.original_locator}'."
+            )
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_not_contain_image(
@@ -1222,7 +1310,9 @@ class SLtoB:
         for element in self.b.get_elements(locator):
             if self.b.get_property(element, "nodeName") == "IMG":
                 self.log_source(loglevel)
-                raise AssertionError(message or f"Page should have not contained image '{locator.original_locator}'")
+                raise AssertionError(
+                    message or f"Page should not have contained image '{locator.original_locator}'."
+                )
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_not_contain_link(
@@ -1235,7 +1325,9 @@ class SLtoB:
         for element in self.b.get_elements(locator):
             if self.b.get_property(element, "nodeName") == "A":
                 self.log_source(loglevel)
-                raise AssertionError(message or f"Page should have not contained link '{locator.original_locator}'")
+                raise AssertionError(
+                    message or f"Page should not have contained link '{locator.original_locator}'."
+                )
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_not_contain_list(
@@ -1247,7 +1339,9 @@ class SLtoB:
         for element in self.b.get_elements(locator):
             if self.b.get_property(element, "nodeName") == "SELECT":
                 self.log_source(loglevel)
-                raise AssertionError(message or f"Page should have not contained list '{locator.original_locator}'")
+                raise AssertionError(
+                    message or f"Page should not have contained list '{locator.original_locator}'."
+                )
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_not_contain_radio_button(
@@ -1263,7 +1357,7 @@ class SLtoB:
             ):
                 self.log_source(loglevel)
                 raise AssertionError(
-                    message or f"Page should have not contained radio button '{locator}'"
+                    message or f"Page should not have contained radio button '{locator.original_locator}'."
                 )
 
     @keyword(tags=("IMPLEMENTED",))
@@ -1293,7 +1387,7 @@ class SLtoB:
             ]:
                 self.log_source(loglevel)
                 raise AssertionError(
-                    message or f"Page should have not contained textfield '{locator}'"
+                    message or f"Page should not have contained text field '{locator.original_locator}'."
                 )
 
     @keyword
@@ -1426,7 +1520,7 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def set_selenium_speed(self, value: timedelta):
-        return self.b.millisecs_to_timestr(self.b.convert_timeout(value)) 
+        return self.b.millisecs_to_timestr(self.b.convert_timeout(value))
 
     @keyword(tags=("IMPLEMENTED",))
     def set_selenium_timeout(self, value: timedelta):
@@ -1533,7 +1627,17 @@ class SLtoB:
     ):
         for element in self.b.get_elements(locator):
             if self.b.get_property(element, "nodeName") == "TEXTAREA":
-                self.b.get_text(locator, CONTAINS, expected, message)
+                try:
+                    text = self.b.get_text(locator)
+                except Exception as e:
+                    raise ElementNotFound(
+                        f"Textarea with locator '{locator.original_locator}' not found."
+                    ) from e
+                if expected not in text:
+                    raise AssertionError(
+                        message
+                        or f"Text area '{locator.original_locator}' should have contained text '{expected}' but it had '{text}'."
+                    )
                 return
         raise AssertionError("Element is not a textarea")
 
@@ -1546,7 +1650,12 @@ class SLtoB:
     ):
         for element in self.b.get_elements(locator):
             if self.b.get_property(element, "nodeName") == "TEXTAREA":
-                self.b.get_text(locator, EQUALS, expected, message)
+                text = self.b.get_text(locator)
+                if text != expected:
+                    raise AssertionError(
+                        message
+                        or f"Text area '{locator.original_locator}' should have had text '{expected}' but it had '{text}'."
+                    )
                 return
         raise AssertionError("Element is not a textarea")
 
@@ -1575,7 +1684,12 @@ class SLtoB:
                 "week",
                 "file",
             ]:
-                self.b.get_text(locator, CONTAINS, expected, message)
+                text = self.b.get_text(locator)
+                if expected not in text:
+                    raise AssertionError(
+                        message
+                        or f"Text field '{locator.original_locator}' should have contained text '{expected}' but it contained '{text}'."
+                    )
                 return
         raise AssertionError("Element is not a textfield")
 
@@ -1604,13 +1718,20 @@ class SLtoB:
                 "week",
                 "file",
             ]:
-                self.b.get_text(locator, EQUALS, expected, message)
+                text = self.b.get_text(locator)
+                if text != expected:
+                    raise AssertionError(
+                        message
+                        or f"Value of text field '{locator.original_locator}' should have been '{expected}' but was '{text}'."
+                    )
                 return
         raise AssertionError("Element is not a textfield")
 
     @keyword(tags=("IMPLEMENTED",))
     def title_should_be(self, title: str, message: Optional[str] = None):
-        self.b.get_title(EQUALS, title, message)
+        self.b.get_title(
+            EQUALS, title, message or "Title should have been {expected} but was {value}."
+        )
 
     @keyword(tags=("IMPLEMENTED",))
     def unselect_all_from_list(self, locator: WebElement):
@@ -1683,7 +1804,7 @@ class SLtoB:
     ):
         self._wait_until(
             lambda: text in self.b.get_text(locator),
-            f"Element '{locator}' did not get text '{text}' in <TIMEOUT>.",
+            f"Element '{locator.original_locator}' did not get text '{text}' in <TIMEOUT>.",
             timeout,
             error,
         )
@@ -1698,7 +1819,7 @@ class SLtoB:
     ):
         self._wait_until(
             lambda: text not in self.b.get_text(locator),
-            f"Element '{locator}' still had text '{text}' after <TIMEOUT>.",
+            f"Element '{locator.original_locator}' still had text '{text}' after <TIMEOUT>.",
             timeout,
             error,
         )
@@ -1828,7 +1949,7 @@ class SLtoB:
             op,
             limit,
             timeout=timeout,
-            message=error or f"Element '{locator}' did not appear in <TIMEOUT>.",
+            message=error or f"Element '{locator.original_locator}' did not appear in <TIMEOUT>.",
         )
 
     @keyword(tags=("IMPLEMENTED",))
@@ -1864,7 +1985,7 @@ class SLtoB:
             operator,
             limit,
             timeout=timeout,
-            message=error or f"Element '{locator}' did not appear in <TIMEOUT>.",
+            message=error or f"Element '{locator.original_locator}' did not appear in <TIMEOUT>.",
         )
 
     def _wait_until(self, condition, error, timeout: timedelta = None, custom_error=None):

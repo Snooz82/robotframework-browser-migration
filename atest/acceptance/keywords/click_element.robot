@@ -17,30 +17,26 @@ Double Click Element
     Element Text Should Be    output    double clicked
 
 Click Element Error
-    [Documentation]    FAIL Element with locator 'id:äääääää' not found.
+    
     [Setup]    Go To Page "javascript/click.html"
-    Click Element    id:äääääää
+    Run Keyword And Expect Error    Element with locator 'id:äääääää' not found.    Click Element    id:äääääää
 
 Click Element Error 2
-    [Documentation]    FAIL Element with locator 'id:鱼鱼鱼鱼' not found.
     [Setup]    Go To Page "javascript/click.html"
-    Click Element    id:鱼鱼鱼鱼
+    Run Keyword And Expect Error    Element with locator 'id:鱼鱼鱼鱼' not found.     Click Element    id:鱼鱼鱼鱼
 
 Click Element Error 3
-    [Documentation]    FAIL Element with locator '鱼在天空中飞翔' not found.
     [Setup]    Go To Page "javascript/click.html"
-    Click Element    鱼在天空中飞翔
+    Run Keyword And Expect Error    Element with locator '鱼在天空中飞翔' not found.    Click Element    鱼在天空中飞翔
 
 Double Click Element Error
-    [Documentation]    FAIL Element with locator 'id:öööö' not found.
     [Setup]    Go To Page "javascript/click.html"
-    Double Click Element    id:öööö
+    Run Keyword And Expect Error    Element with locator 'id:öööö' not found.    Double Click Element    id:öööö
 
 Click Element Action Chain
     [Tags]    NoGrid
     [Documentation]
     ...    LOB 1:1 INFO        Clicking 'singleClickButton' using an action chain.
-    ...    LOG 1:6 DEBUG GLOB: *actions {"actions": [{*
     Click Element    singleClickButton      action_chain=True
     Element Text Should Be    output    single clicked
 
@@ -48,4 +44,5 @@ Click Element Action Chain
 Initialize Page
     [Documentation]    Initialize Page
     Reload Page
+    Set Selenium Timeout    1 seconds
     Element Text Should Be    output    initial output
