@@ -18,6 +18,8 @@ from robot.running.model import TestCase
 from robot.utils import DotDict, secs_to_timestr
 from robotlibcore import DynamicCore, keyword
 
+from SeleniumLibraryToBrowser.keys import Keys
+
 from .errors import ElementNotFound
 try:
     from SeleniumLibrary import SeleniumLibrary
@@ -444,23 +446,24 @@ class SLtoB:
         modifier: Union[bool, str] = False,
         action_chain: bool = False,
     ):
-        kb_modifiers = {
-            "CONTROL": KeyboardModifier.Control,
-            "CTRL": KeyboardModifier.Control,
-            "SHIFT": KeyboardModifier.Shift,
-            "ALT": KeyboardModifier.Alt,
-            "META": KeyboardModifier.Meta,
-            "COMMAND": KeyboardModifier.Meta,
-        }
-        mods = []
+        modifiers = []
         if modifier and modifier.upper() != "FALSE":
             logger.console(modifier)
             modifiers = modifier.split("+")
+        try:
             for mod in modifiers:
-                if mod.upper() not in kb_modifiers.keys():
-                    raise ValueError(f"Modifier {mod} is not supported")
-                mods.append(kb_modifiers[mod.upper()])
-        self.b.click_with_options(locator, MouseButton.left, *mods)
+                if mod.upper() not in dict(Keys.__members__):
+                    raise ValueError(f"'{mod.upper()}' modifier does not match to Selenium Keys")
+                self.b.keyboard_key(KeyAction.down, Keys[mod.upper()].value)
+
+            self.b.click_with_options(locator, MouseButton.left)
+        finally:
+            for mod in reversed(modifiers):
+                try:
+                    self.b.keyboard_key(KeyAction.up, Keys[mod.upper()].value)
+                except:
+                    pass
+
 
     @keyword(tags=("IMPLEMENTED",))
     def click_element_at_coordinates(self, locator: WebElement, xoffset: int, yoffset: int):
