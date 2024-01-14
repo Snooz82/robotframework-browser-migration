@@ -28,7 +28,7 @@ Handle Alert can leave open
 Handle Alert with invalid action
     Click Link    Click Me!
     Run Keyword And Expect Error
-    ...    *
+    ...    ValueError: Invalid alert action 'INVALID'.
     ...    Handle Alert    INVALID
     Alert Should Be Present
 
@@ -46,7 +46,7 @@ Handle Alert with custom timeout
     Handle Alert    timeout=1s
     Click Button    Slow alert
     Run Keyword And Expect Error
-    ...    *
+    ...    Alert not found in 1 millisecond.
     ...    Handle Alert    ACCEPT    1 ms
     Handle Alert    timeout=3.14 seconds
 
@@ -54,17 +54,17 @@ Alert Should Not Be Present
     Alert Should Not Be Present
     Click Link    Click Me!
     Run Keyword And Expect Error
-    ...    *
+    ...    Alert with message 'ALERT!' present.
     ...    Alert Should Not Be Present
 
 Alert Should Not Be Present with custom actions
     [Setup]    Go To Page "javascript/dynamic_content.html"
     Click Button    Change the title
     Run Keyword And Expect Error
-    ...    *
+    ...    Alert with message 'Really change the title?' present.
     ...    Alert Should Not Be Present    action=LEAVE
     Run Keyword And Expect Error
-    ...    *
+    ...    Alert with message 'Really change the title?' present.
     ...    Alert Should Not Be Present    action=DISmiss
     Wait For Title Change    Original
 
@@ -73,12 +73,12 @@ Alert Should Not Be Present with custom timeout
     Click Button    Slow alert
     Alert Should Not Be Present    DISMISS    ${0.001}
     Run Keyword And Expect Error
-    ...    *
+    ...    Alert with message 'Alert after 500ms!' present.
     ...    Alert Should Not Be Present    timeout=0.99999
 
 Alert Should Be Present
     Run Keyword And Expect Error
-    ...    *
+    ...    Alert not found in 1 second.
     ...    Alert Should Be Present
     Click Link    Click Me!
     Alert Should Be Present
@@ -90,7 +90,7 @@ Alert Should Be Present with message validation
     Alert Should Be Present    MULTILINE ALERT!
     Click Link    Click Me!
     Run Keyword And Expect Error
-    ...    *
+    ...    Alert message should have been 'foo bar' but it was 'ALERT!'.
     ...    Alert Should Be Present    foo bar
 
 Alert Should Be Present accepts by default
@@ -116,7 +116,7 @@ Alert Should Be Present can leave alert open
 Alert Should Be Present with custom timeout
     Click Button    Slow alert
     Run Keyword And Expect Error
-    ...    *
+    ...    Alert not found in 1 millisecond.
     ...    Alert Should Be Present    timeout=1ms
     Alert Should Be Present    Alert after 500ms!    ACCEPT    3s
 
@@ -124,6 +124,7 @@ Handle Alert when popup window closes
     [Documentation]    Popup window is closed by javascript while
     ...    'Handle Alert' keyword is waiting for alert
     ...    FAIL GLOB: An exception occurred waiting for alert*
+    [Tags]  Triage
     [Setup]    Go To Page "javascript/self_closing_popup.html"
     Click Button    Self Closing
     ${handle} =    Switch Window   NEW

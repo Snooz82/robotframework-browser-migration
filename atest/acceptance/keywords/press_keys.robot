@@ -69,12 +69,12 @@ Press Keys With Asian Text
 
 Press Keys Element Not Found
     Run Keyword And Expect Error
-    ...    *
+    ...    Element with locator 'not_here' not found.
     ...    Press Keys    not_here    YYYY
 
 Press Keys No keys Argument
     Run Keyword And Expect Error
-    ...    *
+    ...    "keys" argument can not be empty.
     ...    Press Keys    text_field
 
 Press Keys Without Element

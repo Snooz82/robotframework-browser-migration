@@ -51,12 +51,12 @@ Should Be Enabled Not Disabled
     [Documentation]    Should Be Enabled Not Disabled
     [Arguments]    ${locator}
     Element Should Be Enabled    ${locator}
-    Run Keyword And Expect Error    *
+    Run Keyword And Expect Error    Element '${locator}' is enabled.
     ...    Element Should Be Disabled    ${locator}
 
 Should Be Disabled Not Enabled
     [Documentation]    Should Be Disabled Not Enabled
     [Arguments]    ${locator}
     Element Should Be Disabled    ${locator}
-    Run Keyword And Expect Error    *
+    Run Keyword And Expect Error    Element '${locator}' is disabled.
     ...    Element Should Be Enabled    ${locator}

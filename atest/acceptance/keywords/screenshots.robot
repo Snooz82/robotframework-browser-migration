@@ -144,7 +144,7 @@ Capture page screenshot with closed browser
 
 Set screenshot directory when importing
     [Setup]    Remove Files    ${TEMPDIR}/selenium-screenshot-*.png
-    Import Library    SeleniumLibrary    screenshot_root_directory=${TEMPDIR}    WITH NAME    SL2
+    Import Library    SeleniumLibraryToBrowser    screenshot_root_directory=${TEMPDIR}    WITH NAME    SL2
     Set Library Search Order    SL2
     Open Browser To Start Page
     Capture Page Screenshot

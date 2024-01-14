@@ -10,10 +10,10 @@ Title Should Be
     [Documentation]    LOG 1:5 Page title is '(root)/index.html'.
     Title Should Be    (root)/index.html
     Run Keyword And Expect Error
-    ...    *
+    ...    Title should have been 'not a title' but was '(root)/index.html'.
     ...    Title Should Be    not a title
     Run Keyword And Expect Error
-    ...    *
+    ...    Page title was not expected
     ...    Title Should Be    not a title   message=Page title was not expected
 
 Page Should Contain
@@ -25,7 +25,19 @@ Page Should Contain
     ...    LOG 3:18 FAIL Page should have contained text 'non existing text' but did not.
     Page Should Contain    needle
     Page Should Contain    This is the haystack
-    Run Keyword and Expect Error    *    Page Should Contain    non existing text
+    Page Should Contain    non existing text
+
+Page Should Contain Using Default Custom Log Level
+    [Tags]    NoGrid
+    [Documentation]    The Page Should Contains using default custom log level (that being
+    ...    'TRACE' - noting the excluded second argument for the `Page Should Contain`
+    ...    keyword) fails and the log contains the html content.
+    ...    FAIL Page should have contained text 'non existing text' but did not.
+    ...    LOG 2:19 TRACE REGEXP: <html.*</html>
+    ...    LOG 2:20 FAIL Page should have contained text 'non existing text' but did not.
+    ${old_level}=  Set Log Level    TRACE
+    Page Should Contain    non existing text
+    [Teardown]    Set Log Level    ${old_level}
 
 Page Should Contain Numbers And String Should Be Same
     Log Source
@@ -37,29 +49,61 @@ Page Should Contain With Text Having Internal Elements
     Go to page "links.html"
     Page Should Contain    Relative with text after
 
+Page Should Contain With Custom Log Level INFO
+    [Tags]    NoGrid
+    [Documentation]    Html content is shown at the explicitly specified INFO level.
+    ...    FAIL Page should have contained text 'non existing text' but did not.
+    ...    LOG 1:18 INFO REGEXP: <html.*</html>
+    ...    LOG 1:19 FAIL Page should have contained text 'non existing text' but did not.
+    Page Should Contain    non existing text    INFO
+
+Page Should Contain With Custom Log Level WARN
+    [Tags]    NoGrid
+    [Documentation]    Html content is shown at the explicitly specified WARN level.
+    ...    FAIL Page should have contained text 'non existing text' but did not.
+    ...    LOG 1:18 WARN REGEXP: <html.*</html>
+    ...    LOG 1:19 FAIL Page should have contained text 'non existing text' but did not.
+    Page Should Contain    non existing text    WARN
+
 Page Should Contain With Custom Log Level DEBUG
     [Tags]    NoGrid
-    [Documentation]    Html content is shown at DEBUG level.
+    [Documentation]    Html content is shown at the explicitly specified DEBUG level.
     ...    FAIL Page should have contained text 'non existing text' but did not.
-    ...    LOG 1:18 DEBUG REGEXP: (?i)<html.*</html>
+    ...    LOG 1:18 DEBUG REGEXP: <html.*</html>
     ...    LOG 1:19 FAIL Page should have contained text 'non existing text' but did not.
-    Run Keyword and Expect Error    *    Page Should Contain    non existing text    DEBUG
+    Page Should Contain    non existing text    DEBUG
 
 Page Should Contain With Custom Log Level TRACE
     [Tags]    NoGrid
-    [Documentation]    Html content is shown at DEBUG level.
+    [Documentation]    Html content is shown at the explicitly specified TRACE level.
     ...    FAIL Page should have contained text 'non existing text' but did not.
-    ...    LOG 2:19 TRACE REGEXP: (?i)<html.*</html>
+    ...    LOG 2:19 TRACE REGEXP: <html.*</html>
     ...    LOG 2:20 FAIL Page should have contained text 'non existing text' but did not.
     Set Log Level    TRACE
-    Run Keyword and Expect Error    *    Page Should Contain    non existing text    TRACE
+    Page Should Contain    non existing text    TRACE
     [Teardown]    Set Log Level    DEBUG
+
+Page Should Contain With Custom Log Level NONE
+    [Tags]    NoGrid
+    [Documentation]    Html content is not shown because the loglevel is set to NONE.
+    ...    FAIL Page should have contained text 'non existing text' but did not.
+    ...    LOG 1:18 FAIL Page should have contained text 'non existing text' but did not.
+    Page Should Contain    non existing text    NONE
+
+Page Should Contain With Custom Log Level Below Current Log Level
+    [Tags]    NoGrid
+    [Documentation]    Html content is not shown when custom log level is below curent log level.
+    ...    FAIL Page should have contained text 'non existing text' but did not.
+    ...    LOG 2:18 FAIL Page should have contained text 'non existing text' but did not.
+    ${old_level}=  Set Log Level    DEBUG
+    Page Should Contain    non existing text    TRACE
+    [Teardown]    Set Log Level    ${old_level}
 
 Page Should Contain With Disabling Source Logging
     [Documentation]    LOG TEARDOWN:2 NONE
     Set Log Level    INFO
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should have contained text 'non existing text' but did not.
     ...    Page Should Contain    non existing text    loglevel=NONE
     [Teardown]    Set Log Level    DEBUG
 
@@ -74,53 +118,53 @@ Page Should Not Contain
     ...    LOG 1:14 Current page does not contain text 'non existing text'.
     ...    LOG 2:13 FAIL Page should not have contained text 'needle'.
     Page Should Not Contain    non existing text
-    Run Keyword and Expect Error    *    Page Should Not Contain    needle
+    Page Should Not Contain    needle
 
 Page Should Not Contain With Custom Log Level
     [Tags]    NoGrid
-    [Documentation]    LOG 1.1:13 DEBUG REGEXP: (?i)<html.*</html>
+    [Documentation]    LOG 1.1:13 DEBUG REGEXP: <html.*</html>
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should not have contained text 'needle'.
     ...    Page Should Not Contain    needle    DEBUG
 
 Page Should Not Contain With Disabling Source Logging
     [Documentation]    LOG TEARDOWN:2 NONE
     Set Log Level    INFO
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should not have contained text 'needle'.
     ...    Page Should Not Contain    needle    loglevel=NONE
     [Teardown]    Set Log Level    DEBUG
 
 Page Should Contain Element
     Page Should Contain Element    some_id
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should have contained element 'non-existent' but did not.
     ...    Page Should Contain Element    non-existent
 
 Page Should Contain Element With Custom Message
     Run Keyword And Expect Error
-    ...    *
+    ...    Custom error message
     ...    Page Should Contain Element    invalid    Custom error message
 
 Page Should Contain Element With Disabling Source Logging
     [Documentation]    LOG TEARDOWN:2 NONE
     Set Log Level    INFO
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should have contained element 'non-existent' but did not.
     ...    Page Should Contain Element    non-existent    loglevel=NONE
     [Teardown]    Set Log Level    DEBUG
 
 Page Should Not Contain Element
     Page Should Not Contain Element    non-existent
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should not have contained element 'some_id'.
     ...    Page Should Not Contain Element    some_id
 
 Page Should Not Contain Element With Disabling Source Logging
     [Documentation]    LOG TEARDOWN:2 NONE
     Set Log Level    INFO
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should not have contained element 'some_id'.
     ...    Page Should Not Contain Element    some_id    loglevel=NONE
     [Teardown]    Set Log Level    DEBUG
 
@@ -129,16 +173,16 @@ Element Should Contain
     Element Should Contain    some_id    THIS TEXT IS INSIDE AN IDENTIFIED ELEMENT  ignore_case=True
     Element Should Contain    some_id    This text is inside an identified element  ignore_case=False
     Run Keyword And Expect Error
-    ...    *
+    ...    Element 'some_id' should have contained text 'non existing text' but its text was 'This text is inside an identified element'.
     ...    Element Should Contain    some_id    non existing text
     Run Keyword And Expect Error
-    ...    *
+    ...    Element with locator 'missing_id' not found.
     ...    Element Should Contain    missing_id    This should report missing element.
     Run Keyword And Expect Error
-    ...    *
+    ...    Element 'some_id' should have contained text 'THIS TEXT' but its text was 'This text is inside an identified element'.
     ...    Element Should Contain    some_id    THIS TEXT    ignore_case=False
     Run Keyword And Expect Error
-    ...    *
+    ...    Element 'some_id' should have contained text 'foobar' but its text was 'This text is inside an identified element'.
     ...    Element Should Contain    some_id    foobar    ignore_case=True
 
 Element Should Not Contain
@@ -147,23 +191,23 @@ Element Should Not Contain
     Element Should Not Contain    some_id    THIS TEXT is not inside an identified element  ignore_case=True
     Element Should Not Contain    some_id    elementypo
     Run Keyword And Expect Error
-    ...    *
+    ...    Element 'some_id' should not contain text 'This text is inside an identified element' but it did.
     ...    Element Should Not Contain    some_id    This text is inside an identified element
     Run Keyword And Expect Error
-    ...    *
+    ...    Element 'some_id' should not contain text 'TEXT' but it did.
     ...    Element Should Not Contain    some_id    TEXT  ignore_case=True
     Run Keyword And Expect Error
-    ...    *
+    ...    Element 'some_id' should not contain text 'text' but it did.
     ...    Element Should Not Contain    some_id    text  ignore_case=False
     Run Keyword And Expect Error
-    ...    *
+    ...    Element with locator 'missing_id' not found.
     ...    Element Should Not Contain    missing_id    This should report missing element.
 
 Element Text Should Be
     Element Text Should Be    some_id    This text is inside an identified element
     Element Text Should Be    some_id    This TEXT IS INSIDE AN IDENTIFIED ELEMENT  ignore_case=True
     Run Keyword And Expect Error
-    ...    *
+    ...    The text of element 'some_id' should have been 'inside' but it was 'This text is inside an identified element'.
     ...    Element Text Should Be    some_id    inside
 
 Element Text Should Not Be
@@ -171,20 +215,20 @@ Element Text Should Not Be
     Element Text Should Not Be    some_id    This TEXT IS INSIDE AN IDENTIFIED ELEMENT  ignore_case=False
     Element Text Should Not Be    some_id    FOO This text is inside an identified element  ignore_case=True
     Run Keyword And Expect Error
-    ...    *
+    ...    The text of element 'some_id' was not supposed to be 'This text is inside an identified element'.
     ...    Element Text Should Not Be    some_id    This text is inside an identified element
     Run Keyword And Expect Error
-    ...    *
+    ...    The text of element 'some_id' was not supposed to be 'This text is inside an identified element'.
     ...    Element Text Should Not Be    some_id    This text is inside an identified element  ignore_case=False
     Run Keyword And Expect Error
-    ...    *
+    ...    The text of element 'some_id' was not supposed to be 'THIS TEXT is inside an identified element'.
     ...    Element Text Should Not Be    some_id    THIS TEXT is inside an identified element  ignore_case=True
 
 Get Text
     ${str} =    Get Text    some_id
     Should Match    ${str}    This text is inside an identified element
     Run Keyword And Expect Error
-    ...    *
+    ...    Element with locator 'missing_id' not found.
     ...    Get Text    missing_id
 
 Page Should Contain Checkbox
@@ -194,7 +238,7 @@ Page Should Contain Checkbox
     Page Should Contain Checkbox    can_send_email
     Page Should Contain Checkbox    xpath=//input[@type='checkbox' and @name='can_send_sms']
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should have contained checkbox 'non-existing' but did not.
     ...    Page Should Contain Checkbox    non-existing
 
 Page Should Not Contain Checkbox
@@ -203,7 +247,7 @@ Page Should Not Contain Checkbox
     [Setup]    Go To Page "forms/prefilled_email_form.html"
     Page Should Not Contain Checkbox    non-existing
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should not have contained checkbox 'can_send_email'.
     ...    Page Should Not Contain Checkbox    can_send_email
 
 Page Should Contain Radio Button
@@ -211,28 +255,28 @@ Page Should Contain Radio Button
     Page Should Contain Radio Button    sex
     Page Should Contain Radio Button    xpath=//input[@type="radio" and @value="male"]
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should have contained radio button 'non-existing' but did not.
     ...    Page Should Contain Radio Button    non-existing
 
 Page Should Not Contain Radio Button
     [Setup]    Go To Page "forms/prefilled_email_form.html"
     Page Should Not Contain Radio Button    non-existing
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should not have contained radio button 'sex'.
     ...    Page Should Not Contain Radio Button    sex
 
 Page Should Contain Image
     [Setup]    Go To Page "links.html"
     Page Should contain Image    image.jpg
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should have contained image 'non-existent' but did not.
     ...    Page Should contain Image    non-existent
 
 Page Should Not Contain Image
     [Setup]    Go To Page "links.html"
     Page Should not contain Image    non-existent
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should not have contained image 'image.jpg'.
     ...    Page Should not contain Image    image.jpg
 
 Page Should Contain Link
@@ -240,28 +284,28 @@ Page Should Contain Link
     Page Should contain link    Relative
     Page Should contain link    sub/index.html
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should have contained link 'non-existent' but did not.
     ...    Page Should contain link    non-existent
 
 Page Should Not Contain Link
     [Setup]    Go To Page "links.html"
     Page Should not contain link    non-existent
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should not have contained link 'Relative'.
     ...    Page Should not contain link    Relative
 
 Page Should Contain List
     [Setup]    Go To Page "forms/prefilled_email_form.html"
     Page should Contain List    possible_channels
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should have contained list 'non-existing' but did not.
     ...    Page Should Contain List    non-existing
 
 Page Should Not Contain List
     [Setup]    Go To Page "forms/prefilled_email_form.html"
     Page Should Not Contain List    non-existing
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should not have contained list 'possible_channels'.
     ...    Page Should Not Contain List    possible_channels
 
 Page Should Contain TextField
@@ -271,10 +315,10 @@ Page Should Contain TextField
     Page Should Contain Text Field    xpath=//input[@type='text' and @name='email']
     Page Should Contain Text Field    xpath=//input[@type='url' and @name='website']
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should have contained text field 'non-existing' but did not.
     ...    Page Should Contain Text Field    non-existing
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should have contained text field 'can_send_email' but did not.
     ...    Page Should Contain Text Field    can_send_email
 
 Page Should Not Contain Text Field
@@ -282,10 +326,10 @@ Page Should Not Contain Text Field
     Page Should Not Contain Text Field    non-existing
     Page Should Not Contain Text Field    can_send_email
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should not have contained text field 'name'.
     ...    Page Should Not Contain Text Field    name
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should not have contained text field 'website'.
     ...    Page Should Not Contain Text Field    website
 
 TextField Should Contain
@@ -299,10 +343,10 @@ TextField Should Contain
     TextField Should contain    name    my name
     TextField Should contain    website    https://example.org
     Run Keyword And Expect Error
-    ...    *
+    ...    Text field 'name' should have contained text 'non-existing' but it contained 'my name'.
     ...    TextField Should contain    name    non-existing
     Run Keyword And Expect Error
-    ...    *
+    ...    Text field 'website' should have contained text 'https://w3.org' but it contained 'https://example.org'.
     ...    TextField Should contain    website    https://w3.org
 
 TextField Value Should Be
@@ -313,7 +357,7 @@ TextField Value Should Be
     Input Text    name    my name
     textfield Value Should Be    name    my name
     Run Keyword And Expect Error
-    ...    *
+    ...    Value of text field 'name' should have been 'non-existing' but was 'my name'.
     ...    textfield Value Should Be    name    non-existing
     Clear Element Text    name
     Textfield Value Should Be    name    ${EMPTY}
@@ -323,7 +367,7 @@ TextArea Should Contain
     TextArea Should Contain    comment    ${EMPTY}
     Input Text    comment    This is a comment.
     Run Keyword And Expect Error
-    ...    *
+    ...    Text area 'comment' should have contained text 'Hello World!' but it had 'This is a comment.'.
     ...    TextArea Should Contain    comment    Hello World!
 
 TextArea Value Should Be
@@ -331,7 +375,7 @@ TextArea Value Should Be
     TextArea Value Should Be    comment    ${EMPTY}
     Input Text    comment    This is a comment.
     Run Keyword And Expect Error
-    ...    *
+    ...    Text area 'comment' should have had text 'Hello World!' but it had 'This is a comment.'.
     ...    TextArea Value Should Be    comment    Hello World!
     Clear Element Text    comment
     TextArea Value Should Be    comment    ${EMPTY}
@@ -347,21 +391,21 @@ Page Should Contain Button
     Page Should Contain Button    Act!
     Page Should Contain Button    xpath=//input[@type="button"]
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should have contained button 'non-existing' but did not.
     ...    Page Should Contain Button    non-existing
 
 Page Should Not Contain Button In Button Tag
     [Setup]    Go To Page "forms/buttons.html"
     Page Should Not Contain Button    invalid
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should not have contained button 'button'.
     ...    Page Should Not Contain Button    button
 
 Page Should Not Contain Button In Input Tag
     [Setup]    Go To Page "forms/buttons.html"
     Page Should Not Contain Button    invalid
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should not have contained input 'Act!'.
     ...    Page Should Not Contain Button    Act!
 
 Get All Links

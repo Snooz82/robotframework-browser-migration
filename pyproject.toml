@@ -1,5 +1,54 @@
 [tool.pylint]
 max-line-length = 100
 disable = "missing-function-docstring,too-many-lines,missing-module-docstring,missing-class-docstring,invalid-name,too-many-arguments,too-many-instance-attributes,redefined-builtin,redefined-outer-name,too-many-public-methods,broad-exception-caught,keyword-arg-before-vararg"
+
 [tool.black]
+target-version = ['py38']
 line-length = 100
+
+[tool.ruff]
+unfixable = []
+exclude = [
+  "__pycache__",
+  "dist",
+  ".venv"
+]
+ignore = [
+  "B008",  # do not perform function calls in argument defaults
+  "B904",  # TODO only temporary. should be fixed.
+  "E501",  # line too long
+  "N815",  # mixedCase variable in class scope
+  "N803",  # argument name should be lowercase
+  "N806",  # variable in function should be lowercase
+  "N812",  # lowercase imported as non lowercase
+  "N999",  # Invalid module name: 'Browser'
+  "PLR0913",  # too many arguments
+]
+target-version = "py38"
+select = [
+  "E",
+  "F",
+  "W",
+  "C90",
+  "I",
+  "N",
+  "B",
+  "PYI",
+  "PL",
+  "PTH",
+  "UP",
+  "A",
+  "C4",
+  "DTZ",
+  "ISC",
+  "ICN",
+  "INP",
+  "PIE",
+  "T20",
+  "PYI",
+  "PT",
+  "RSE",
+  "RET",
+  "SIM",
+  "RUF"
+]

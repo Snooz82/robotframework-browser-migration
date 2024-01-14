@@ -25,14 +25,14 @@ class ThreadingHttpServer(ThreadingMixIn, HTTPServer):
     pass
 
 
-def stop_server(port=8080):
+def stop_server(port=7000):
     """send QUIT request to http server running on localhost:<port>"""
     conn = HTTPConnection("localhost:%d" % port)
     conn.request("QUIT", "/")
     conn.getresponse()
 
 
-def start_server(path, port=8080):
+def start_server(path, port=7000):
     os.chdir(path)
     server = ThreadingHttpServer(("", port), StoppableHttpRequestHandler)
     server.serve_forever()

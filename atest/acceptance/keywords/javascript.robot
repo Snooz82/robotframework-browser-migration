@@ -28,14 +28,12 @@ Execute Javascript
     Page Should Contain    Inserted directly
 
 Execute Javascript With ARGUMENTS and JAVASCRIPT Marker
-    Promise To     Wait For Alert    accept    ${EMPTY}    123
     Execute Javascript
     ...  ARGUMENTS
     ...  123
     ...  JAVASCRIPT
     ...  alert(arguments[0]);
-    Wait For All Promises
-    # Alert Should Be Present    123    timeout=10 s
+    Alert Should Be Present    123    timeout=10 s
 
 Execute Javascript With JAVASCRIPT and ARGUMENTS Marker
     [Documentation]
@@ -43,14 +41,12 @@ Execute Javascript With JAVASCRIPT and ARGUMENTS Marker
     ...    alert(arguments[0]);
     ...    By using argument:
     ...    '123'
-    Promise To     Wait For Alert    accept    ${EMPTY}    123
     Execute Javascript
     ...  JAVASCRIPT
     ...  alert(arguments[0]);
     ...  ARGUMENTS
     ...  123
-    # Alert Should Be Present    123    timeout=10 s
-    Wait For All Promises
+    Alert Should Be Present    123    timeout=10 s
 
 Execute Javascript With ARGUMENTS Marker Only
     [Documentation]
@@ -58,18 +54,15 @@ Execute Javascript With ARGUMENTS Marker Only
     ...    alert(arguments[0]);
     ...    By using arguments:
     ...    '123' and '0987'
-    Promise To     Wait For Alert    accept    ${EMPTY}    123
     Execute Javascript
     ...  alert(arguments[0]);
     ...  ARGUMENTS
     ...  123
     ...  0987
-    # Alert Should Be Present    123    timeout=10 s
-    Wait For All Promises
-
+    Alert Should Be Present    123    timeout=10 s
 
 Execute Javascript With ARGUMENTS Marker And WebElement
-    ${body_webelement} =    Get WebElement   css:body
+    ${body_webelement} =    Get WebElement  css:body
     ${tag_name} =    Execute Javascript
     ...  return arguments[0].tagName;
     ...  ARGUMENTS
@@ -86,13 +79,19 @@ Execute Javascript from File
     Page Should Contain    Inserted via file
 
 Execute Javascript from File With ARGUMENTS Marker
-    Promise To     Wait For Alert    accept    ${EMPTY}    123
     Execute Javascript
     ...    ${CURDIR}/javascript_alert.js
     ...    ARGUMENTS
     ...    123
-    # Alert Should Be Present    123    timeout=10 s
-    Wait For All Promises
+    Alert Should Be Present    123    timeout=10 s
+
+Execute Javascript with dictionary object
+    &{ARGS}=            Create Dictionary     key=value    number=${1}    boolean=${TRUE}
+    ${returned}    Execute JavaScript      return arguments[0]    ARGUMENTS    ${ARGS}
+    Should Be True    type($returned) == dict
+    Should Be Equal    ${returned}[key]    value
+    Should Be Equal    ${returned}[number]    ${1}
+    Should Be Equal    ${returned}[boolean]    ${TRUE}
 
 Open Context Menu
     [Tags]    Known Issue Safari

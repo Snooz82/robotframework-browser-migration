@@ -28,15 +28,15 @@ Should Find Text In Specific Row with CSS Specific Mechanics
 
 Should Give Error Message When Content Not Found In Table Row
     Run Keyword And Expect Error
-    ...    *
+    ...    Table 'simpleTable' row 2 did not contain text 'simpleTable_B3'.
     ...    Table Row Should Contain    simpleTable    2    simpleTable_B3
 
 Should Give Error Message When Row Number Out Of Bounds
     Run Keyword And Expect Error
-    ...    *
+    ...    Table 'simpleTable' row 20 did not contain text 'simpleTable_B3'.
     ...    Table Row Should Contain    simpleTable    20    simpleTable_B3
 
 Zero is invalid column index
     Run Keyword And Expect Error
-    ...    *
+    ...    ValueError: Row and column indexes must be non-zero.
     ...    Table Row Should Contain    simpleTable    0    xxx

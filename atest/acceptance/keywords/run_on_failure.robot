@@ -16,7 +16,7 @@ Run On Failure Keyword Only Called Once
     Register Keyword To Run On Failure    On Fail
     Run Keyword And Ignore Error    Custom Selenium Keyword
     Should Be Equal    ${ON FAIL COUNT}    ${1}    On Failure Keyword called ${ON FAIL COUNT} times.
-    [Teardown]    Set Library Search Order    SeleniumLibrary
+    [Teardown]    Set Library Search Order    SeleniumLibraryToBrowser
 
 Log Title On Failure
     [Documentation]
@@ -25,7 +25,7 @@ Log Title On Failure
     Register Keyword to Run on Failure    Log Title
     Page Should Contain    needle
     Run Keyword And Expect Error
-    ...    *
+    ...    ${FAILURE MESSAGE}
     ...    Page Should Not Contain    needle    loglevel=None
 
 Disable Run on Failure With Nothing
@@ -34,7 +34,7 @@ Disable Run on Failure With Nothing
     ...    LOG 2.1:2 NONE
     Register Keyword to Run On Failure    Nothing
     Run Keyword And Expect Error
-    ...    *
+    ...    ${FAILURE MESSAGE}
     ...    Page Should Not Contain    needle    loglevel=None
 
 Disable Run on Failure With Python None
@@ -43,7 +43,7 @@ Disable Run on Failure With Python None
     ...    LOG 2.1:2 NONE
     Register Keyword to Run On Failure    ${NONE}
     Run Keyword And Expect Error
-    ...    *
+    ...    ${FAILURE MESSAGE}
     ...    Page Should Not Contain    needle    loglevel=None
 
 Disable Run on Failure With String NONE
@@ -52,7 +52,7 @@ Disable Run on Failure With String NONE
     ...    LOG 2.1:2 NONE
     Register Keyword to Run On Failure    NONE
     Run Keyword And Expect Error
-    ...    *
+    ...    ${FAILURE MESSAGE}
     ...    Page Should Not Contain    needle    loglevel=None
 
 Run on Failure Returns Previous Value
@@ -70,14 +70,14 @@ Run On Failure also fails
     [Documentation]    LOG 2.1 WARN Keyword 'Failure During Run On failure' could not be run on failure: Expected error.
     Register Keyword to Run on Failure    Failure During Run On failure
     Run Keyword And Expect Error
-    ...    *
+    ...    ${FAILURE MESSAGE}
     ...    Page Should Not Contain    needle    loglevel=None
 
 Run On Failure With Default Keyword And Conflight With Keyword Names
     [Documentation]    LOG 2.1    INFO REGEXP:  .*<a href=\\"selenium-screenshot.*\\.png\\"><img src=\\"selenium-screenshot.*\\.png\\" width=\\"800px\\"></a>.*
     Register Keyword To Run On Failure     Capture Page Screenshot
     Run Keyword And Expect Error
-    ...    *
+    ...    ${FAILURE MESSAGE}
     ...    Page Should Not Contain    needle    loglevel=None
 
 *** Keywords ***

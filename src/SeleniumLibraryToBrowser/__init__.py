@@ -1,8 +1,6 @@
 import re
 import time
-import typing
 from datetime import timedelta
-from enum import Enum
 from itertools import count
 from pathlib import Path
 from typing import Any, List, Optional, Union
@@ -10,17 +8,17 @@ from typing import Any, List, Optional, Union
 from Browser import Browser
 from Browser.assertion_engine import AssertionOperator as AO
 from Browser.utils.data_types import *
-from robot.api import logger, SkipExecution
+from robot.api import SkipExecution, logger
 from robot.api.deco import library
-from robot.running import EXECUTION_CONTEXTS
 from robot.libraries.BuiltIn import BuiltIn
 from robot.result.model import Message
 from robot.result.model import TestCase as ResultTestCase
+from robot.running import EXECUTION_CONTEXTS
 from robot.running.model import TestCase
 from robot.utils import DotDict, secs_to_timestr
-
 from robotlibcore import DynamicCore, keyword
 
+from .errors import ElementNotFound
 try:
     from SeleniumLibrary import SeleniumLibrary
 except ImportError:
@@ -117,6 +115,7 @@ class WebElement(str):
         "text": "text={loc}",
         "element": "element={loc}",
     }
+    original_locator: Union[str, tuple] = ""
 
     @classmethod
     def from_string(cls, locator: str) -> "WebElement":
@@ -132,10 +131,16 @@ class WebElement(str):
             match = re.match(f"{strategy} ?[:=] ?", locator)
             if match:
                 loc = locator[match.end() :]
-                return cls(selector.format(loc=loc))
+                new_locator = cls(selector.format(loc=loc))
+                new_locator.original_locator = locator
+                return new_locator
         if re.match(r"\(*//", locator):
-            return cls(f"xpath={locator}")
-        return cls("[id='{loc}'], [name='{loc}']".format(loc=locator))
+            new_locator = cls(f"xpath={locator}")
+            new_locator.original_locator = locator
+            return new_locator
+        new_locator = cls(f"[id='{locator}'], [name='{locator}']")
+        new_locator.original_locator = locator
+        return new_locator
 
     @staticmethod
     def is_default(locator: str) -> bool:
@@ -191,14 +196,14 @@ class SeleniumLibraryToBrowser(DynamicCore):
     ROBOT_LIBRARY_VERSION = __version__
 
     def __init__(
-            self,
-            timeout=timedelta(seconds=5.0),
-            implicit_wait=timedelta(seconds=0.0),
-            run_on_failure="Capture Page Screenshot",
-            screenshot_root_directory: Optional[str] = None,
-            plugins: Optional[str] = None,
-            event_firing_webdriver: Optional[str] = None,
-            browser_args: Optional[List[str]] = None,
+        self,
+        timeout=timedelta(seconds=5.0),
+        implicit_wait=timedelta(seconds=0.0),
+        run_on_failure="Capture Page Screenshot",
+        screenshot_root_directory: Optional[str] = None,
+        plugins: Optional[str] = None,
+        event_firing_webdriver: Optional[str] = None,
+        browser_args: Optional[List[str]] = None,
     ):
         """Library init doc."""
         sl2b = SLtoB(
@@ -247,7 +252,6 @@ class SeleniumLibraryToBrowser(DynamicCore):
         except:
             pass
         return super().get_keyword_documentation(name)
-
 
 
 class SLtoB:
@@ -395,12 +399,18 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def checkbox_should_be_selected(self, locator: WebElement):
+        logger.info(f"Verifying checkbox '{locator}' is selected.")
         if not (
             self.b.get_attribute(locator, "type").lower() == "checkbox"
             and self.b.get_property(locator, "nodeName") == "INPUT"
         ):
-            raise ValueError("Element is not a checkbox")
-        self.b.get_checkbox_state(locator, EQUALS, True)
+            raise ElementNotFound(f"Checkbox with locator '{locator.original_locator}' not found.")
+        try:
+            self.b.get_checkbox_state(locator, EQUALS, True)
+        except AssertionError as e:
+            raise AssertionError(
+                f"Checkbox '{locator.original_locator}' should have been selected but was not."
+            ) from e
 
     @keyword(tags=("IMPLEMENTED",))
     def checkbox_should_not_be_selected(self, locator: WebElement):
@@ -408,8 +418,11 @@ class SLtoB:
             self.b.get_attribute(locator, "type").lower() == "checkbox"
             and self.b.get_property(locator, "nodeName") == "INPUT"
         ):
-            raise ValueError("Element is not a checkbox")
-        self.b.get_checkbox_state(locator, EQUALS, False)
+            raise ElementNotFound(f"Checkbox with locator '{locator.original_locator}' not found.")
+        try:
+            self.b.get_checkbox_state(locator, EQUALS, False)
+        except AssertionError as e:
+            raise AssertionError(f"Checkbox '{locator.original_locator}' should not have been selected.") from e
 
     @keyword(tags=("IMPLEMENTED",))
     def choose_file(self, locator: WebElement, file_path: str):
@@ -447,7 +460,7 @@ class SLtoB:
                 if mod.upper() not in kb_modifiers.keys():
                     raise ValueError(f"Modifier {mod} is not supported")
                 mods.append(kb_modifiers[mod.upper()])
-        self.b.click(locator, MouseButton.left, 1, None, None, None, False, False, *mods)
+        self.b.click_with_options(locator, MouseButton.left, *mods)
 
     @keyword(tags=("IMPLEMENTED",))
     def click_element_at_coordinates(self, locator: WebElement, xoffset: int, yoffset: int):
@@ -455,7 +468,7 @@ class SLtoB:
         # calculates the half of the width and height of the element
         x = bbox["width"] / 2 + xoffset
         y = bbox["height"] / 2 + yoffset
-        self.b.click(selector=locator, position_x=x, position_y=y)
+        self.b.click_with_options(selector=locator, position_x=x, position_y=y)
 
     @keyword(tags=("IMPLEMENTED",))
     def click_image(self, locator: WebElement, modifier: Union[bool, str] = False):
@@ -525,7 +538,7 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def double_click_element(self, locator: WebElement):
-        self.b.click(locator, clickCount=2, delay=timedelta(milliseconds=100))
+        self.b.click_with_options(locator, clickCount=2, delay=timedelta(milliseconds=100))
 
     @keyword(tags=("IMPLEMENTED",))
     def drag_and_drop(self, locator: WebElement, target: WebElement):
@@ -972,7 +985,7 @@ class SLtoB:
     def open_browser(
         self,
         url: Optional[str] = None,
-        browser: str = "firefox",
+        browser: str = "chrome",
         alias: Optional[str] = None,
         remote_url: Union[bool, str] = False,
         desired_capabilities: Union[dict, None, str] = None,
@@ -997,7 +1010,7 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_contain(self, text: str, loglevel: str = "TRACE"):
-        assert self.page_contains(f"text={text}"), f"Page should have contained text '{text}'"
+        assert self.page_contains(f"text={text}"), f"Page should have contained text '{text}' but did not."
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_button(
@@ -1011,7 +1024,7 @@ class SLtoB:
             if self.b.get_property(element, "nodeName") in ["INPUT", "BUTTON"]:
                 return
         self.log_source(loglevel)
-        raise AssertionError(message or f"Page should have contained button '{locator}'")
+        raise AssertionError(message or f"Page should have contained button '{locator.original_locator}' but did not.")
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_checkbox(
@@ -1028,7 +1041,7 @@ class SLtoB:
             ):
                 return
         self.log_source(loglevel)
-        raise AssertionError(message or f"Page should have contained checkbox '{locator}'")
+        raise AssertionError(message or f"Page should have contained checkbox '{locator.original_locator}' but did not.")
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_element(
@@ -1038,7 +1051,11 @@ class SLtoB:
         loglevel: str = "TRACE",
         limit: Optional[int] = None,
     ):
-        count = self.b.get_element_count(locator)
+        try:
+            count = self.b.get_element_count(locator)
+        except Exception as e:
+            logger.trace(e)
+            count = 0
         if limit is not None:
             if count == limit:
                 return
@@ -1050,7 +1067,7 @@ class SLtoB:
             )
         if not count:
             self.log_source(loglevel)
-            raise AssertionError(message or f"Page should have contained element '{locator}'")
+            raise AssertionError(message or f"Page should have contained element '{locator.original_locator}' but did not.")
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_image(
@@ -1064,7 +1081,7 @@ class SLtoB:
             if self.b.get_property(element, "nodeName") == "IMG":
                 return
         self.log_source(loglevel)
-        raise AssertionError(message or f"Page should have contained image '{locator}'")
+        raise AssertionError(message or f"Page should have contained image '{locator.original_locator}' but did not.")
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_link(
@@ -1078,7 +1095,7 @@ class SLtoB:
             if self.b.get_property(element, "nodeName") == "A":
                 return
         self.log_source(loglevel)
-        raise AssertionError(message or f"Page should have contained link '{locator}'")
+        raise AssertionError(message or f"Page should have contained link '{locator.original_locator}' but did not.")
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_list(
@@ -1091,7 +1108,7 @@ class SLtoB:
             if self.b.get_property(element, "nodeName") == "SELECT":
                 return
         self.log_source(loglevel)
-        raise AssertionError(message or f"Page should have contained list '{locator}'")
+        raise AssertionError(message or f"Page should have contained list '{locator.original_locator}' but did not.")
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_radio_button(
@@ -1107,7 +1124,7 @@ class SLtoB:
             ):
                 return
         self.log_source(loglevel)
-        raise AssertionError(message or f"Page should have contained radio button '{locator}'")
+        raise AssertionError(message or f"Page should have contained radio button '{locator.original_locator}' but did not.")
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_contain_textfield(
@@ -1136,7 +1153,7 @@ class SLtoB:
             ]:
                 return
         self.log_source(loglevel)
-        raise AssertionError(message or f"Page should have contained textfield '{locator}'")
+        raise AssertionError(message or f"Page should have contained textfield '{locator.original_locator}' but did not.")
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_not_contain(self, text: str, loglevel: str = "TRACE"):
@@ -1189,7 +1206,7 @@ class SLtoB:
     ):
         if self.b.get_element_count(locator):
             self.log_source(loglevel)
-            raise AssertionError(message or f"Page should have not contained element '{locator}'")
+            raise AssertionError(message or f"Page should have not contained element '{locator.original_locator}'")
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_not_contain_image(
@@ -1202,7 +1219,7 @@ class SLtoB:
         for element in self.b.get_elements(locator):
             if self.b.get_property(element, "nodeName") == "IMG":
                 self.log_source(loglevel)
-                raise AssertionError(message or f"Page should have not contained image '{locator}'")
+                raise AssertionError(message or f"Page should have not contained image '{locator.original_locator}'")
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_not_contain_link(
@@ -1215,7 +1232,7 @@ class SLtoB:
         for element in self.b.get_elements(locator):
             if self.b.get_property(element, "nodeName") == "A":
                 self.log_source(loglevel)
-                raise AssertionError(message or f"Page should have not contained link '{locator}'")
+                raise AssertionError(message or f"Page should have not contained link '{locator.original_locator}'")
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_not_contain_list(
@@ -1227,7 +1244,7 @@ class SLtoB:
         for element in self.b.get_elements(locator):
             if self.b.get_property(element, "nodeName") == "SELECT":
                 self.log_source(loglevel)
-                raise AssertionError(message or f"Page should have not contained list '{locator}'")
+                raise AssertionError(message or f"Page should have not contained list '{locator.original_locator}'")
 
     @keyword(tags=("IMPLEMENTED",))
     def page_should_not_contain_radio_button(
@@ -1286,7 +1303,12 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def radio_button_should_be_set_to(self, group_name: str, value: str):
-        radios = self.b.get_elements(f"css=input[type='radio'][name='{group_name}']")
+        selector = f"css=input[type='radio'][name='{group_name}']"
+        try:
+            self.b.get_element_count(selector, GREATER_THAN, 0)
+        except AssertionError:
+            raise ElementNotFound(f"No radio button with name '{group_name}' found.")
+        radios = self.b.get_elements(selector)
         actual_value = None
         for radio in radios:
             if self.b.get_checkbox_state(radio):
@@ -1341,7 +1363,7 @@ class SLtoB:
             self.b.get_attribute(locator, "type").lower() == "checkbox"
             and self.b.get_property(locator, "nodeName") == "INPUT"
         ):
-            raise RuntimeError("'Select Checkbox' works only with checkboxes.")
+            raise ElementNotFound(f"Checkbox with locator '{locator.original_locator}' not found.")
         self.b.check_checkbox(locator)
 
     @keyword(tags=("IMPLEMENTED",))
@@ -1371,10 +1393,16 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def select_radio_button(self, group_name: str, value: str):
-        selector = (
+        selector = WebElement(
             f"input[type='radio'][name='{group_name}'][value='{value}'],"
             f"input[type='radio'][name='{group_name}']#{value}"
         )
+        try:
+            self.b.get_element_count(selector, GREATER_THAN, 0)
+        except AssertionError:
+            raise AssertionError(
+                f"No radio button with name '{group_name}' and value '{value}' found."
+            )
         self.b.check_checkbox(selector)
 
     @keyword
@@ -1393,9 +1421,9 @@ class SLtoB:
     def set_selenium_implicit_wait(self, value: timedelta):
         self.b.set_browser_timeout(value)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def set_selenium_speed(self, value: timedelta):
-        ...
+        return self.b.millisecs_to_timestr(self.b.convert_timeout(value)) 
 
     @keyword(tags=("IMPLEMENTED",))
     def set_selenium_timeout(self, value: timedelta):
@@ -1593,7 +1621,7 @@ class SLtoB:
             self.b.get_attribute(locator, "type").lower() == "checkbox"
             and self.b.get_property(locator, "nodeName") == "INPUT"
         ):
-            raise AssertionError("Element is not a checkbox")
+            raise ElementNotFound(f"Checkbox with locator '{locator.original_locator}' not found.")
         self.b.uncheck_checkbox(locator)
 
     @keyword(tags=("IMPLEMENTED",))

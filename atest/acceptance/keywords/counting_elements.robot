@@ -48,11 +48,17 @@ Page Should Contain Element Log Level Does Not Affect When Keyword Passes
 Page Should Contain Element When Limit Is Number And Error
     [Setup]    Go To Page "links.html"
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should have contained "99" element(s), but it did contain "2" element(s).
     ...    Page Should Contain Element    name: div_name    limit=99
     Run Keyword And Expect Error
-    ...    *
+    ...    Custom error message.
     ...    Page Should Contain Element    name: div_name    message=Custom error message.    limit=${99}
+
+Page Should Contain Element When Limit Is Not Number
+    [Setup]    Go To Page "links.html"
+    Run Keyword And Expect Error
+    ...    ValueError: *Argument 'limit' got value 'AA'*
+    ...    Page Should Contain Element    name: div_name    limit=AA
 
 Page Should Contain Element When Error With Limit And Different Loglevels
     [Tags]    NoGrid
@@ -64,5 +70,4 @@ Page Should Contain Element When Error With Limit And Different Loglevels
     [Setup]    Go To Page "links.html"
     Run Keyword And Ignore Error
     ...    Page Should Contain Element    name: div_name    limit=99
-    Run Keyword And Expect Error    *
-    ...    Page Should Contain Element    name: div_name    loglevel=debug    limit=99
+    Page Should Contain Element    name: div_name    loglevel=debug    limit=99

@@ -12,7 +12,7 @@ Capture Element Screenshot
 
 Capture Element Screenshot When Element Does Not Exist
     Run Keyword And Expect Error
-    ...    *
+    ...    Element with locator 'id:not_here' not found.
     ...    Capture Element Screenshot    id:not_here
 
 Capture Element Screenshot When Path Does Not Exist

@@ -39,23 +39,23 @@ Mixed th and td
 
 Should Give Error Message When Content Not Found In Table Cell
     Run Keyword And Expect Error
-    ...    *
+    ...    Table 'simpleTable' cell on row 1 and column 2 should have contained text 'simpleTable_B3' but it had 'simpleTable_B1'.
     ...    Table Cell Should Contain    simpleTable    1    2    simpleTable_B3
 
 Should Give Error Message When Index Out Of Bounds
     Run Keyword And Expect Error
-    ...    *
+    ...    Table 'simpleTable' should have had at least 10 rows but had only 3.
     ...    Table Cell Should Contain    simpleTable    10    20    simpleTable_B3
     Run Keyword And Expect Error
-    ...    *
+    ...    Table 'simpleTable' row 1 should have had at least 20 columns but had only 3.
     ...    Table Cell Should Contain    simpleTable    1    20    simpleTable_B3
 
 Zero is invalid row and column index
     Run Keyword And Expect Error
-    ...    *
+    ...    ValueError: Both row and column must be non-zero, got row 0 and column 2.
     ...    Table Cell Should Contain    simpleTable    0    2    xxx
     Run Keyword And Expect Error
-    ...    *
+    ...    ValueError: Both row and column must be non-zero, got row -1 and column 0.
     ...    Table Cell Should Contain    simpleTable    -1    0    xxx
 
 *** Keywords ***

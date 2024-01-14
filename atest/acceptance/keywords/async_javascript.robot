@@ -19,6 +19,14 @@ Execute Async Javascript With ARGUMENTS and JAVASCRIPT Marker
     ...  alert(arguments[0]);
     Alert Should Be Present    123    timeout=10 s
 
+Execute Javascript with dictionary object
+    &{ARGS}=            Create Dictionary     key=value    number=${1}    boolean=${TRUE}
+    ${returned}    Execute Async Javascript      arguments[1](arguments[0]);    ARGUMENTS    ${ARGS}
+    Should Be True    type($returned) == dict
+    Should Be Equal    ${returned}[key]    value
+    Should Be Equal    ${returned}[number]    ${1}
+    Should Be Equal    ${returned}[boolean]    ${TRUE}
+
 Should Be Able To Return Javascript Primitives From Async Scripts Neither None Nor Undefined
     ${result} =    Execute Async Javascript    arguments[arguments.length - 1](123);
     Should Be Equal    ${result}    ${123}
@@ -63,10 +71,10 @@ Should Be Able To Return Arrays Of Primitives From Async Scripts
     Length Should Be    ${result}    0
 
 Should Timeout If Script Does Not Invoke Callback
-    Run Keyword And Expect Error    *    Execute Async Javascript    return 1 + 2;
+    Run Keyword And Expect Error    TimeoutException:*    Execute Async Javascript    return 1 + 2;
 
 Should Timeout If Script Does Not Invoke Callback With A Zero Timeout
-    Run Keyword And Expect Error    *    Execute Async Javascript
+    Run Keyword And Expect Error    TimeoutException:*    Execute Async Javascript
     ...    window.setTimeout(function() {}, 0);
 
 Should Not Timeout If Script Callsback Inside A Zero Timeout
@@ -76,7 +84,7 @@ Should Not Timeout If Script Callsback Inside A Zero Timeout
 
 Should Timeout If Script Does Not Invoke Callback With Long Timeout
     Set Selenium Timeout    0.5 seconds
-    Run Keyword And Expect Error    *    Execute Async Javascript
+    Run Keyword And Expect Error    TimeoutException:*    Execute Async Javascript
     ...    var callback = arguments[arguments.length - 1]; window.setTimeout(callback, 1500);
 
 Should Detect Page Loads While Waiting On An Async Script And Return An Error

@@ -928,18 +928,18 @@ function now() {
 
 	// Technique from Juriy Zaytsev
 	// http://thinkweb2.com/projects/prototype/detecting-event-support-without-browser-sniffing/
-	var eventSupported = function( eventName ) { 
-		var el = document.createElement("div"); 
-		eventName = "on" + eventName; 
+	var eventSupported = function( eventName ) {
+		var el = document.createElement("div");
+		eventName = "on" + eventName;
 
-		var isSupported = (eventName in el); 
-		if ( !isSupported ) { 
-			el.setAttribute(eventName, "return;"); 
-			isSupported = typeof el[eventName] === "function"; 
-		} 
-		el = null; 
+		var isSupported = (eventName in el);
+		if ( !isSupported ) {
+			el.setAttribute(eventName, "return;");
+			isSupported = typeof el[eventName] === "function";
+		}
+		el = null;
 
-		return isSupported; 
+		return isSupported;
 	};
 	
 	jQuery.support.submitBubbles = eventSupported("submit");
@@ -994,7 +994,7 @@ jQuery.extend({
 		}
 
 		// Compute a unique ID for the element
-		if ( !id ) { 
+		if ( !id ) {
 			id = ++uuid;
 		}
 
@@ -1636,15 +1636,15 @@ jQuery.event = {
 				}
 			}
 			
-			if ( special.add ) { 
-				var modifiedHandler = special.add.call( elem, handler, data, namespaces, handlers ); 
-				if ( modifiedHandler && jQuery.isFunction( modifiedHandler ) ) { 
-					modifiedHandler.guid = modifiedHandler.guid || handler.guid; 
-					modifiedHandler.data = modifiedHandler.data || handler.data; 
-					modifiedHandler.type = modifiedHandler.type || handler.type; 
-					handler = modifiedHandler; 
-				} 
-			} 
+			if ( special.add ) {
+				var modifiedHandler = special.add.call( elem, handler, data, namespaces, handlers );
+				if ( modifiedHandler && jQuery.isFunction( modifiedHandler ) ) {
+					modifiedHandler.guid = modifiedHandler.guid || handler.guid;
+					modifiedHandler.data = modifiedHandler.data || handler.data;
+					modifiedHandler.type = modifiedHandler.type || handler.type;
+					handler = modifiedHandler;
+				}
+			}
 			
 			// Add the function to the element's handler list
 			handlers[ handler.guid ] = handler;
@@ -1976,10 +1976,10 @@ jQuery.event = {
 			add: function( proxy, data, namespaces, live ) {
 				jQuery.extend( proxy, data || {} );
 
-				proxy.guid += data.selector + data.live; 
+				proxy.guid += data.selector + data.live;
 				data.liveProxy = proxy;
 
-				jQuery.event.add( this, data.live, liveHandler, data ); 
+				jQuery.event.add( this, data.live, liveHandler, data );
 				
 			},
 
@@ -2153,7 +2153,7 @@ jQuery.event.special.submit = {
 					return trigger( "submit", this, arguments );
 				}
 			});
-	 
+	
 			jQuery.event.add(this, "keypress.specialSubmit." + fn.guid, function( e ) {
 				var elem = e.target, type = elem.type;
 
@@ -2227,7 +2227,7 @@ function testChange( e ) {
 
 jQuery.event.special.change = {
 	filters: {
-		focusout: testChange, 
+		focusout: testChange,
 
 		click: function( e ) {
 			var elem = e.target, type = elem.type;
@@ -2291,13 +2291,13 @@ if ( document.addEventListener ) {
 		jQuery.event.special[ fix ] = {
 			setup: function() {
 				this.addEventListener( orig, handler, true );
-			}, 
-			teardown: function() { 
+			},
+			teardown: function() {
 				this.removeEventListener( orig, handler, true );
 			}
 		};
 
-		function handler( e ) { 
+		function handler( e ) {
 			e = jQuery.event.fix( e );
 			e.type = fix;
 			return jQuery.event.handle.call( this, e );
@@ -2439,7 +2439,7 @@ function liveHandler( event ) {
 				fn.altLive && jQuery.inArray(event.type, fn.altLive) > -1 ) {
 
 			data = fn.data;
-			if ( !(data.beforeFilter && data.beforeFilter[event.type] && 
+			if ( !(data.beforeFilter && data.beforeFilter[event.type] &&
 					!data.beforeFilter[event.type](event)) ) {
 				selectors.push( fn.selector );
 			}
@@ -3112,18 +3112,18 @@ var Expr = Sizzle.selectors = {
 				case 'only':
 				case 'first':
 					while ( (node = node.previousSibling) )	 {
-						if ( node.nodeType === 1 ) { 
-							return false; 
+						if ( node.nodeType === 1 ) {
+							return false;
 						}
 					}
-					if ( type === "first" ) { 
-						return true; 
+					if ( type === "first" ) {
+						return true;
 					}
 					node = elem;
 				case 'last':
 					while ( (node = node.nextSibling) )	 {
-						if ( node.nodeType === 1 ) { 
-							return false; 
+						if ( node.nodeType === 1 ) {
+							return false;
 						}
 					}
 					return true;
@@ -3143,7 +3143,7 @@ var Expr = Sizzle.selectors = {
 							if ( node.nodeType === 1 ) {
 								node.nodeIndex = ++count;
 							}
-						} 
+						}
 						parent.sizcache = doneName;
 					}
 					
@@ -3540,7 +3540,7 @@ var contains = document.compareDocumentPosition ? function(a, b){
 
 var isXML = function(elem){
 	// documentElement is verified for cases where it doesn't yet exist
-	// (such as loading iframes in IE - #4833) 
+	// (such as loading iframes in IE - #4833)
 	var documentElement = (elem ? elem.ownerDocument || elem : 0).documentElement;
 	return documentElement ? documentElement.nodeName !== "HTML" : false;
 };
@@ -3670,7 +3670,7 @@ jQuery.fn.extend({
 					selector = selectors[i];
 
 					if ( !matches[selector] ) {
-						matches[selector] = jQuery.expr.match.POS.test( selector ) ? 
+						matches[selector] = jQuery.expr.match.POS.test( selector ) ?
 							jQuery( selector, context || this.context ) :
 							selector;
 					}
@@ -3692,7 +3692,7 @@ jQuery.fn.extend({
 			return ret;
 		}
 
-		var pos = jQuery.expr.match.POS.test( selectors ) ? 
+		var pos = jQuery.expr.match.POS.test( selectors ) ?
 			jQuery( selectors, context || this.context ) : null;
 
 		return this.map(function( i, cur ) {
@@ -5763,7 +5763,7 @@ if ( "getBoundingClientRect" in document.documentElement ) {
 	jQuery.fn.offset = function( options ) {
 		var elem = this[0];
 
-		if ( options ) { 
+		if ( options ) {
 			return this.each(function( i ) {
 				jQuery.offset.setOffset( this, options, i );
 			});
@@ -5789,7 +5789,7 @@ if ( "getBoundingClientRect" in document.documentElement ) {
 	jQuery.fn.offset = function( options ) {
 		var elem = this[0];
 
-		if ( options ) { 
+		if ( options ) {
 			return this.each(function( i ) {
 				jQuery.offset.setOffset( this, options, i );
 			});

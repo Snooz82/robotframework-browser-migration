@@ -28,15 +28,15 @@ Mixed th and td
 
 Should Give Error Message When Content Not Found In Table Column
     Run Keyword And Expect Error
-    ...    *
+    ...    Table 'id:simpleTable' column 2 did not contain text 'simpleTable_C3'.
     ...    Table Column Should Contain    id:simpleTable    2    simpleTable_C3
 
 Should Give Error Message When Column Number Out Of Bounds
     Run Keyword And Expect Error
-    ...    *
+    ...    Table '//*?@id="simpleTable"?' column 20 did not contain text 'simpleTable_B3'.
     ...    Table Column Should Contain    //*[@id="simpleTable"]    20    simpleTable_B3
 
 Zero is invalid column index
     Run Keyword And Expect Error
-    ...    *
+    ...    ValueError: Row and column indexes must be non-zero.
     ...    Table Column Should Contain    simpleTable    0    xxx

@@ -14,7 +14,7 @@ Choose File
 Choose File And File Does Not Exist
     [Setup]    Go To Page "forms/file_upload_form.html"
     Run Keyword And Expect Error
-    ...    *
+    ...    InvalidArgumentException: Message:*
     ...    Choose File    file_to_upload    ${CURDIR}${/}NotHere.txt
 
 Choose File And Folder
@@ -45,12 +45,12 @@ Choose File With Grid From Library Using SL choose_file method
 
 Input Text Should Work Same Way When Not Using Grid
     [Documentation]
-    ...    LOG 1:6 DEBUG GLOB:    POST*/session/*/clear {"*
+    ...    LOG 1:6 DEBUG GLOB:    POST*/session/*/clear {*
     ...    LOG 1:9 DEBUG          Finished Request
     ...    LOG 1:10 DEBUG GLOB:    POST*/session/*/value*"text": "*
     ...    LOG 1:13 DEBUG         Finished Request
     ...    LOG 1:14 DEBUG         NONE
-    [Tags]    NoGrid    NotRelevant
+    [Tags]    NoGrid
     [Setup]    Touch    ${CURDIR}${/}temp.txt
     Input Text    file_to_upload    ${CURDIR}${/}temp.txt
     Textfield Value Should Be    file_to_upload    C:\\fakepath\\temp.txt

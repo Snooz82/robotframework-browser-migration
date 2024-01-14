@@ -5,8 +5,10 @@ import sys
 
 from robot.api import ExecutionResult, ResultVisitor
 from robot.model import TestCase, TestSuite
+
 try:
     from SeleniumLibraryToBrowser import SeleniumLibraryToBrowser
+
     sl2b = SeleniumLibraryToBrowser()
 except ImportError:
     sl2b = None
@@ -42,9 +44,9 @@ class ResultAnalyzer(ResultVisitor):
                 ]
             else:
                 parent_hash = hashlib.sha3_512(
-                    f"{keyword.parent.libname}{keyword.parent.name}".encode("UTF-8")
+                    f"{keyword.parent.libname}{keyword.parent.name}".encode()
                 ).hexdigest()[16:32]
-            kw_name = keyword.name[len(keyword.libname)+1:]
+            kw_name = keyword.name[len(keyword.libname) + 1 :]
             if kw_name not in KEYWORD_CALLS:
                 KEYWORD_CALLS[kw_name] = KeywordCall(parent_hash)
             else:
@@ -56,7 +58,7 @@ class ResultAnalyzer(ResultVisitor):
             kw_calls[key] = KEYWORD_CALLS[key].to_dict()
         self.print_stats(kw_calls)
         json_stats = json.dumps(kw_calls, indent=2)
-        with open(f"keyword_stats.json", "w") as keyword_stats_file:
+        with open("keyword_stats.json", "w") as keyword_stats_file:
             keyword_stats_file.write(json_stats)
         print(f'\nStatistics File: {os.path.abspath("keyword_stats.json")}')
         print(
@@ -78,7 +80,9 @@ class ResultAnalyzer(ResultVisitor):
         print(f'| {"Keyword".ljust(longest_keyword, " ")} | count | parents | migration status |')
         print(f'+-{"".ljust(longest_keyword, "-")       }-+-------+---------+------------------+')
         for kw_name in kw_calls:
-            implemented = sl2b.keyword_implemented(kw_name.lower().replace(" ", "_")) if sl2b else False
+            implemented = (
+                sl2b.keyword_implemented(kw_name.lower().replace(" ", "_")) if sl2b else False
+            )
             print(
                 f'| {kw_name.ljust(longest_keyword , " ")} |'
                 f' {str(kw_calls[kw_name]["call_count"]).ljust(5," ")} |'

@@ -5,7 +5,7 @@ from setuptools import find_packages, setup
 
 CURDIR = dirname(abspath(__file__))
 
-with open("README.rst", "r", encoding="utf-8") as fh:
+with open("README.rst", encoding="utf-8") as fh:
     long_description = fh.read()
 
 with open(join(CURDIR, "src", "SeleniumLibraryToBrowser", "__init__.py"), encoding="utf-8") as f:

@@ -16,13 +16,11 @@ Get Zero Elements
 Get Web Element
     @{links}=    Get WebElements    //div[@id="div_id"]/a
     ${link}=    Get WebElement    //div[@id="div_id"]/a
-    ${html1}=    Get Property    ${links}[0]    outerHTML
-    ${html2}=    Get Property    ${link}    outerHTML
-    Should Be Equal    ${html1}    ${html2}
+    Should Be Equal    ${links}[0]    ${link}
 
 Get Web Element Should Fail If Element Is Not Found
-    Run Keyword And Expect Error
-    ...    *
+    Run Keyword and Expect Error
+    ...    Element with locator 'id=non_existing_elem' not found.
     ...    Get WebElement    id=non_existing_elem
 
 More Get Elements
@@ -63,7 +61,7 @@ Get Element Attribute
     Should Be Equal    ${class}    Second Class
 
 Get Element Attribute Value Should Be Should Be Succesfull
-    Element Attribute Value Should Be  link=Absolute external link  href  http://www.google.com
+    Element Attribute Value Should Be  link=Absolute external link  href  http://www.google.com/
     Element Attribute Value Should Be  link=Absolute external link  nothere  ${None}
 
 
@@ -72,34 +70,34 @@ Get Element Attribute And Element Attribute Value Should Be Should have same res
     Element Attribute Value Should Be  css=#second_div  class  ${attribute_value}
 
 Get Element Attribute Value Should Be Should Be Succesfull with non-ascii characters
-    Element Attribute Value Should Be  link=Link with Unicode äöüÄÖÜß  href  index.html
+    Element Attribute Value Should Be  link=Link with Unicode äöüÄÖÜß  href  http://localhost:7000/html/index.html
 
 Get Element Attribute Value Should Be Should Be Succesfull error and error messages
     Run Keyword And Expect Error
-    ...    *
+    ...    Test Fail Custom Message
     ...    Element Attribute Value Should Be  id=image_id  href  http://non_existing.com  message=Test Fail Custom Message
     Run Keyword And Expect Error
-    ...    *
+    ...    Element 'id=image_id' attribute should have value 'http://non_existing.com' (str) but its value was 'None' (nonetype).
     ...    Element Attribute Value Should Be  id=image_id  href  http://non_existing.com
     Run Keyword And Expect Error
-    ...    *
+    ...    Element with locator 'id=non_existing' not found.
     ...    Element Attribute Value Should Be  id=non_existing  href  http://non_existing.com
     Run Keyword And Expect Error
-    ...    *
-    ...    Element Attribute Value Should Be  link=Target opens in new window  href  http://localhost:8080/html/indéx.html
+    ...    Element 'link=Target opens in new window' attribute should have value 'http://localhost:7000/html/indéx.html' (str) but its value was 'http://localhost:7000/html/index.html' (str).
+    ...    Element Attribute Value Should Be  link=Target opens in new window  href  http://localhost:7000/html/indéx.html
 
 Get Horizontal Position
     ${pos}=    Get Horizontal Position    link=Link
     Should Be True    ${pos} > 0
     Run Keyword And Expect Error
-    ...    *
+    ...    Element with locator 'non-existent' not found.
     ...    Get Horizontal Position    non-existent
 
 Get Vertical Position
     ${pos}=    Get Vertical Position    link=Link
     Should Be True    ${pos} > 0
     Run Keyword And Expect Error
-    ...    *
+    ...    Element with locator 'non-existent' not found.
     ...    Get Horizontal Position    non-existent
 
 Get Element Size
@@ -107,7 +105,7 @@ Get Element Size
     Should be True  ${height} > 0
     Should be True  ${width} > 0
     Run Keyword And Expect Error
-    ...    *
+    ...    Element with locator 'non-existent' not found.
     ...    Get Element Size  non-existent
 
 Get Empty Element Size

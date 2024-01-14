@@ -1,35 +1,38 @@
-*** Setting ***
+*** Settings ***
 Library           SeleniumLibraryToBrowser    run_on_failure=Nothing    implicit_wait=0.2 seconds
 Library           Collections
 Library           OperatingSystem
 Library           DateTime
 
-*** Variable ***
-${SERVER}=         localhost:8080
-${BROWSER}=        chromium
+*** Variables ***
+${SERVER}=         localhost:7000
+${BROWSER}=        chrome
 ${REMOTE_URL}=     ${NONE}
 ${DESIRED_CAPABILITIES}=    ${NONE}
 ${ROOT}=           http://${SERVER}/html
 ${FRONT_PAGE}=     ${ROOT}/
 ${SPEED}=          0
 
-*** Keyword ***
+*** Keywords ***
 Open Browser To Start Page
     [Documentation]    This keyword also tests 'Set Selenium Speed' and 'Set Selenium Timeout'
     ...    against all reason.
+    [Arguments]    ${alias}=${None}
     ${default speed}    ${default timeout}=    Open Browser To Start Page Without Testing Default Options
+    ...    ${alias}
     # FIXME: We shouldn't test anything here. If this stuff isn't tested elsewhere, new *tests* needs to be added.
     # FIXME: The second test below verifies a hard coded return value!!?!
-    # Should Be Equal    ${default speed}    0 seconds
-    # Should Be Equal    ${default timeout}    5 seconds
+    Should Be Equal    ${default speed}    0 seconds
+    Should Be Equal    ${default timeout}    5 seconds
 
 Open Browser To Start Page Without Testing Default Options
     [Documentation]    Open Browser To Start Page Without Testing Default Options
+    [Arguments]    ${alias}=${None}
     Open Browser    ${FRONT PAGE}    ${BROWSER}    remote_url=${REMOTE_URL}
-    ...    desired_capabilities=${DESIRED_CAPABILITIES}
-    # ${orig speed} =    Set Selenium Speed    ${SPEED}
-    ${orig timeout} =    Set Selenium Timeout    2 seconds
-    # [Return]    ${orig speed}    5 seconds
+    ...    desired_capabilities=${DESIRED_CAPABILITIES}    alias=${alias}
+    ${orig speed} =    Set Selenium Speed    ${SPEED}
+    ${orig timeout} =    Set Selenium Timeout    10 seconds
+    [Return]    ${orig speed}    5 seconds
 
 Cannot Be Executed In IE
     [Documentation]    Cannot Be Executed In IE

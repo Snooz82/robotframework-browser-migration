@@ -1,4 +1,4 @@
-*** Setting ***
+*** Settings ***
 Documentation     Tests frames
 Test Setup        Go To Page "frames/frameset.html"
 Test Teardown     UnSelect Frame
@@ -50,7 +50,7 @@ Select And Unselect Frame should also work with iframes
 
 Select Frame with non-unique name attribute
     [Setup]    Go To Page "frames/poorlynamedframe.html"
-    Run Keyword And Expect Error    *    Select Frame    left
+    Run Keyword And Expect Error    NoSuchFrameException*    Select Frame    left
     Select Frame    xpath=//frame[@name='left']|//iframe[@name='left']
     Click Link    foo
     Unselect Frame

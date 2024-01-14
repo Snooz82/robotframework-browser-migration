@@ -53,17 +53,17 @@ List Selection Should Be
     List Selection Should Be    possible_channels    Telephone    Email
     List Selection Should Be    possible_channels    phone    email
     Run Keyword And Expect Error
-    ...    *
+    ...    List 'possible_channels' should have had selection ? Email | Telephone | Direct mail ? but selection was ? Email (email) | Telephone (phone) ?.
     ...    List Selection Should Be    possible_channels    Email    Telephone    Direct mail
 
 List Selection Should Be When Extraneous Options Are Selected
     Run Keyword And Expect Error
-    ...    *
+    ...    List 'possible_channels' should have had selection ? email ? but selection was ? Email (email) | Telephone (phone) ?.
     ...    List Selection Should Be    possible_channels    email
 
 List Selection Should Be When List Does Not Exist
     Run Keyword And Expect Error
-    ...    *
+    ...    Page should have contained list 'nonexisting' but did not.
     ...    List Selection Should Be    nonexisting    whatever
 
 UnSelect By Value Single Value From List
@@ -82,10 +82,10 @@ UnSelecting Two Times Has No Effect
 
 Unselect works only for multiselect lists
     Run Keyword And Expect Error
-    ...    *
+    ...    Un-selecting options works only with multi-selection lists.
     ...    Unselect From List By Label     preferred_channel    Email
         Run Keyword And Expect Error
-    ...    *
+    ...    Un-selecting options works only with multi-selection lists.
     ...    Unselect From List By Value     preferred_channel    Email
 
 Unselect All From List
@@ -112,27 +112,26 @@ Select From Single Selection List
 
 Select Non-Existing Item From Single Selection List
     Run Keyword And Expect Error
-    ...    *
+    ...    NoSuchElementException: Message: Cannot locate option with value: not_there*
     ...    Select From List By Value    preferred_channel    not_there    no_way_there
     Run Keyword And Expect Error
-    ...    *
+    ...    NoSuchElementException: Message: Could not locate element with visible text: Tin Can Phone*
     ...    Select From List By Label    preferred_channel    Tin Can Phone
 
 Select Non-Existing Item From Multi-Selection List
     Run Keyword And Expect Error
-    ...    *
+    ...    NoSuchElementException: Message: Cannot locate option with value: TinCanPhone*
     ...    Select From List By value    possible_channels    TinCanPhone    SmokeSignals
     Run Keyword And Expect Error
-    ...    *
+    ...    NoSuchElementException: Message: Could not locate element with visible text: Tin Can Phone*
     ...    Select From List By Label    possible_channels    Tin Can Phone    Email    Smoke Signals
 
 Unselect Non-Existing Item From List
-    [Tags]    NotRelevant
     Run Keyword And Expect Error
-    ...    *
+    ...    NoSuchElementException: Message: Could not locate element with value: Tin Can Phone*
     ...    Unselect From List By Value    possible_channels    Tin Can Phone    Smoke Signals
     Run Keyword And Expect Error
-    ...    *
+    ...    NoSuchElementException: Message: Could not locate element with visible text: Tin Can Phone*
     ...    Unselect From List By Label    possible_channels    Tin Can Phone    Smoke Signals    Email
 
 Select From Multiselect List
@@ -148,7 +147,7 @@ Select All From List
     Select All From List    interests
     List Selection Should Be    interests    Males    Females    Others
     Run Keyword And Expect Error
-    ...    *
+    ...    'Select All From List' works only with multi-selection lists.
     ...    Select All From List    preferred_channel
 
 List Should Have No Selections
@@ -156,13 +155,14 @@ List Should Have No Selections
     List Should Have No Selections    interests
     Select All From List    interests
     Run Keyword And Expect Error
-    ...    *
+    ...    List 'interests' should have had no selection but selection was ? Males (males) | Females (females) | Others (others) ?.
     ...    List Should Have No Selections    interests
 
 *** Keywords ***
 Select By Label And Verify Selection
     [Arguments]    ${list_id}    ${selection}    @{exp_selection}
     Select From List By Label    ${list_id}    ${selection}
+    List Selection Should Be    ${list_id}    @{exp_selection}
 
 Select By Value And Verify Selection
     [Arguments]    ${list_id}    ${selection}    @{exp_selection}
