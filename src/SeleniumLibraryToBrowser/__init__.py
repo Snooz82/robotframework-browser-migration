@@ -1136,11 +1136,11 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def location_should_be(self, url: str, message: Optional[str] = None):
-        self.b.get_url(EQUALS, url, message)
+        self.b.get_url(EQUALS, url, message or "Location should have been {expected} but was {value}.")
 
     @keyword(tags=("IMPLEMENTED",))
     def location_should_contain(self, expected: str, message: Optional[str] = None):
-        self.b.get_url(CONTAINS, expected, message)
+        self.b.get_url(CONTAINS, expected, message or "Location should have contained {expected} but it was {value}.")
 
     @keyword(tags=("IMPLEMENTED",))
     def log_location(self):
@@ -1621,7 +1621,7 @@ class SLtoB:
     @keyword(tags=("IMPLEMENTED",))
     def select_frame(self, locator: WebElement):
         try:
-            self.b.get_property(locator, "nodeName", EQUALS, "IFRAME")
+            self.b.get_property(locator, "nodeName", AO.validate, "value in ['IFRAME', 'FRAME']")
         except AssertionError:
             raise NoSuchFrameException(f"Message: Unable to locate frame for element: {self.b.get_url()}")
         self.b.set_selector_prefix(f"{locator} >>>", scope=Scope.Global)
