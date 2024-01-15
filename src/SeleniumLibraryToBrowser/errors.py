@@ -22,6 +22,8 @@ class SeleniumLibraryException(Exception):
 class ElementNotFound(SeleniumLibraryException):
     pass
 
+class NoSuchElementException(Exception):
+    pass
 
 class WindowNotFound(SeleniumLibraryException):
     pass

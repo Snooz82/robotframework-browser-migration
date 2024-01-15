@@ -75,6 +75,7 @@ Submit Button Should Be Focused
     Sleep    1 second
     Element Should Be Focused    submit
     Mouse Up    submit
+    [Teardown]    Wait Until Location Is    http://localhost:7000/html/forms/submit.html
 
 Set Focus To Element
     [Setup]    Go To Page "mouse/index.html"

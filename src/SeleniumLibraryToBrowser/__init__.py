@@ -20,7 +20,7 @@ from robotlibcore import DynamicCore, keyword
 
 from SeleniumLibraryToBrowser.keys import Keys
 
-from .errors import ElementNotFound
+from .errors import ElementNotFound, NoSuchElementException
 
 try:
     from SeleniumLibrary import SeleniumLibrary
@@ -147,7 +147,7 @@ class WebElement(str):
 
     @staticmethod
     def is_default(locator: str):
-        match = re.fullmatch(r"css=\[id='(.*)'], \[name='(.*)']", locator)
+        match = re.fullmatch(r"\[id='(.*)'], \[name='(.*)']", locator)
         if match and match.group(1) == match.group(2):
             return match.group(1)
         return None
@@ -1093,15 +1093,25 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def list_selection_should_be(self, locator: WebElement, *expected: str):
+        try:
+            self.b.get_element_states(locator, CONTAINS, "attached")
+        except AssertionError as e:
+            raise ElementNotFound("Page should have contained list 'nonexisting' but did not.")
         selected_labels = self.b.get_selected_options(locator, SelectAttribute.label)
         selected_values = self.b.get_selected_options(locator, SelectAttribute.value)
+        expected_str = " | ".join(expected)
+        actual_str = " | ".join([f"{label} ({value})" for label, value in zip(selected_labels, selected_values)])
         assert sorted(selected_labels) == sorted(expected) or sorted(selected_values) == sorted(
             expected
-        ), f"Expected selection to be {expected}, but was {selected_labels} ({selected_values})"
+        ), f"List '{locator.original_locator}' should have had selection [ {expected_str} ] but selection was [ {actual_str} ]."
 
     @keyword(tags=("IMPLEMENTED",))
     def list_should_have_no_selections(self, locator: WebElement):
-        self.b.get_selected_options(locator, SelectAttribute.label, EQUALS)
+        # self.b.get_selected_options(locator, SelectAttribute.label, EQUALS)
+        selected_labels = self.b.get_selected_options(locator, SelectAttribute.label)
+        selected_values = self.b.get_selected_options(locator, SelectAttribute.value)
+        actual_str = " | ".join([f"{label} ({value})" for label, value in zip(selected_labels, selected_values)])
+        assert len(selected_labels) == 0, f"List '{locator.original_locator}' should have had no selection but selection was [ {actual_str} ]."
 
     @keyword(tags=("IMPLEMENTED",))
     def location_should_be(self, url: str, message: Optional[str] = None):
@@ -1600,6 +1610,12 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def select_from_list_by_label(self, locator: WebElement, *labels: str):
+        existing_labels = [option["label"] for option in self.b.get_select_options(locator)]
+        for label in labels:
+            if label not in existing_labels:
+                raise NoSuchElementException(
+                    f"Message: Could not locate element with visible text: {label}"
+                )
         if self.b.get_property(locator, "multiple"):
             selection = self.b.get_selected_options(locator, SelectAttribute.label)
             labels = [*labels, *selection]
@@ -1607,6 +1623,12 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def select_from_list_by_value(self, locator: WebElement, *values: str):
+        existing_values = [option["value"] for option in self.b.get_select_options(locator)]
+        for value in values:
+            if value not in existing_values:
+                raise NoSuchElementException(
+                    f"Message: Cannot locate option with value: {value}"
+                )
         if self.b.get_property(locator, "multiple"):
             selection = self.b.get_selected_options(locator, SelectAttribute.value)
             values = [*values, *selection]
@@ -1895,10 +1917,16 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def unselect_from_list_by_label(self, locator: WebElement, *labels: str):
-        if not labels:
-            raise ValueError("No labels given.")
         if not self.b.get_property(locator, "multiple"):
             raise RuntimeError("Un-selecting options works only with multi-selection lists.")
+        if not labels:
+            raise ValueError("No labels given.")
+        existing_labels = [option["label"] for option in self.b.get_select_options(locator)]
+        for label in labels:
+            if label not in existing_labels:
+                raise NoSuchElementException(
+                    f"Message: Could not locate element with visible text: {label}"
+                )
         selection = self.b.get_selected_options(locator, SelectAttribute.label)
         self.b.select_options_by(
             locator, SelectAttribute.label, *[s for s in selection if s not in labels]
@@ -1906,10 +1934,16 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def unselect_from_list_by_value(self, locator: WebElement, *values: str):
-        if not values:
-            raise ValueError("No values given.")
         if not self.b.get_property(locator, "multiple"):
             raise RuntimeError("Un-selecting options works only with multi-selection lists.")
+        if not values:
+            raise ValueError("No values given.")
+        existing_values = [option["value"] for option in self.b.get_select_options(locator)]
+        for value in values:
+            if value not in existing_values:
+                raise NoSuchElementException(
+                    f"Message: Could not locate element with value: {value}"
+                )
         selection = self.b.get_selected_options(locator, SelectAttribute.value)
         self.b.select_options_by(
             locator, SelectAttribute.value, *[s for s in selection if s not in values]
@@ -1977,13 +2011,17 @@ class SLtoB:
         timeout: Optional[timedelta] = None,
         error: Optional[str] = None,
     ):
+        if timeout is None:
+            timeout_str = self.b.millisecs_to_timestr(self.b.timeout)
+        else:
+            timeout_str = self.b.millisecs_to_timestr(timeout.total_seconds() * 1000)
         self.b.wait_for_condition(
             ConditionInputs.element_states,
             locator,
             NOT_CONTAINS,
             "visible",
             timeout=timeout,
-            message=error,
+            message=error or f"Element '{locator.original_locator}' still visible after {timeout_str}.",
         )
 
     @keyword(tags=("IMPLEMENTED",))
@@ -1993,13 +2031,17 @@ class SLtoB:
         timeout: Optional[timedelta] = None,
         error: Optional[str] = None,
     ):
+        if timeout is None:
+            timeout_str = self.b.millisecs_to_timestr(self.b.timeout)
+        else:
+            timeout_str = self.b.millisecs_to_timestr(timeout.total_seconds() * 1000)
         self.b.wait_for_condition(
             ConditionInputs.element_states,
             locator,
             CONTAINS,
             "visible",
             timeout=timeout,
-            message=error,
+            message=error or f"Element '{locator.original_locator}' not visible after {timeout_str}.",
         )
 
     @keyword(tags=("IMPLEMENTED",))
