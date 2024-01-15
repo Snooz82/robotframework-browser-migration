@@ -114,7 +114,7 @@ class WebElement(str):
         "css": "css={loc}",
         "link": 'css=a >> text="{loc}"',
         "partial link": "css=a >> text={loc}",
-        "default": "[id={loc}], [name={loc}]",
+        "default": "css=[id={loc}], [name={loc}]",
         "text": "text={loc}",
         "element": "element={loc}",
     }
@@ -147,7 +147,7 @@ class WebElement(str):
 
     @staticmethod
     def is_default(locator: str):
-        match = re.fullmatch(r"\[id='(.*)'], \[name='(.*)']", locator)
+        match = re.fullmatch(r"css=\[id='(.*)'], \[name='(.*)']", locator)
         if match and match.group(1) == match.group(2):
             return match.group(1)
         return None
@@ -373,6 +373,9 @@ class SLtoB:
             if self.b.get_element_count(f"iframe, frame >> nth={index} >>> {locator}"):
                 return True
         return False
+    
+    def type_converter(self, argument: Any) -> str:
+        return type(argument).__name__.lower()
 
     @keyword
     def add_cookie(
@@ -635,7 +638,16 @@ class SLtoB:
         expected: Optional[str],
         message: Optional[str] = None,
     ):
-        self.b.get_attribute(locator, attribute, EQUALS, expected, message)
+        attribute = self.get_element_attribute(locator, attribute)
+        if attribute != expected:
+            raise AssertionError(
+                message
+                or (
+                    f"Element '{locator.original_locator}' attribute should have value '{expected}' "
+                    f"({self.type_converter(expected)}) but its value was '{attribute}' "
+                    f"({self.type_converter(attribute)})."
+                )
+            )
 
     @keyword(tags=("IMPLEMENTED",))
     def element_should_be_disabled(self, locator: WebElement):
@@ -826,7 +838,19 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def get_element_attribute(self, locator: WebElement, attribute: str):
-        return self.b.get_attribute(locator, attribute)
+        try:
+            self.b.get_element_states(locator, CONTAINS, "attached")
+        except AssertionError:
+            raise ElementNotFound(
+                f"Element with locator '{locator.original_locator}' not found."
+            )
+        try:
+            return self.b.get_property(locator, attribute)
+        except AttributeError:
+            try:
+                return self.b.get_attribute(locator, attribute)
+            except AttributeError:
+                return None
 
     @keyword(tags=("IMPLEMENTED",))
     def get_element_count(self, locator: WebElement):
@@ -834,11 +858,23 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def get_element_size(self, locator: WebElement):
+        try:
+            self.b.get_element_states(locator, CONTAINS, "attached")
+        except AssertionError:
+            raise ElementNotFound(
+                f"Element with locator '{locator.original_locator}' not found."
+            )
         value = self.b.get_boundingbox(locator, BoundingBoxFields.ALL)
         return value["width"], value["height"]
 
     @keyword(tags=("IMPLEMENTED",))
     def get_horizontal_position(self, locator: WebElement):
+        try:
+            self.b.get_element_states(locator, CONTAINS, "attached")
+        except AssertionError:
+            raise ElementNotFound(
+                f"Element with locator '{locator.original_locator}' not found."
+            )
         return self.b.get_boundingbox(locator, BoundingBoxFields.x)
 
     @keyword(tags=("IMPLEMENTED",))
@@ -962,12 +998,20 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def get_vertical_position(self, locator: WebElement):
+        try:
+            self.b.get_element_states(locator, CONTAINS, "attached")
+        except AssertionError:
+            raise ElementNotFound(
+                f"Element with locator '{locator.original_locator}' not found."
+            )
         return self.b.get_boundingbox(locator, BoundingBoxFields.y)
 
     @keyword(tags=("IMPLEMENTED",))
     def get_webelement(self, locator: WebElement):
         try:
-            return self.b.get_element(locator)
+            loc = WebElement(self.b.get_element(locator))
+            loc.original_locator = locator.original_locator
+            return loc
         except Exception as e:
             raise ElementNotFound(
                 f"Element with locator '{locator.original_locator}' not found."

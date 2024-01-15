@@ -51,7 +51,7 @@ Assign Id To Element
 Get Element Attribute
     ${id}=    Get Element Attribute    link:Link with id    id
     Should Be Equal    ${id}    some_id
-    ${id}=    Get Element Attribute    dom:document.getElementsByTagName('a')[3]    id
+    ${id}=    Get Element Attribute    //a[4]    id
     Should Be Equal    ${id}    some_id
     ${class}=    Get Element Attribute    second_div    class
     Should Be Equal    ${class}    Second Class
@@ -99,7 +99,7 @@ Get Vertical Position
     Should Be True    ${pos} > 0
     Run Keyword And Expect Error
     ...    Element with locator 'non-existent' not found.
-    ...    Get Horizontal Position    non-existent
+    ...    Get Vertical Position    non-existent
 
 Get Element Size
     ${width}  ${height}=  Get Element Size  link=Link
