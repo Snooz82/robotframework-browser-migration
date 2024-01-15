@@ -20,7 +20,7 @@ from robotlibcore import DynamicCore, keyword
 
 from SeleniumLibraryToBrowser.keys import Keys
 
-from .errors import ElementNotFound, NoSuchElementException
+from .errors import ElementNotFound, NoSuchElementException, NoSuchFrameException
 
 try:
     from SeleniumLibrary import SeleniumLibrary
@@ -596,13 +596,33 @@ class SLtoB:
     ):
         ...
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def current_frame_should_contain(self, text: str, loglevel: str = "TRACE"):
-        ...
+        try:
+            self.b.get_element_count(
+                f"text=/.*{text}.*/",
+                GREATER_THAN,
+                0,
+                f"Frame should have contained text '{text}' but did not."
+            )
+        except AssertionError as e:
+            self.log_source(loglevel)
+            raise e
+        logger.info(f"Current frame contains text '{text}'.")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def current_frame_should_not_contain(self, text: str, loglevel: str = "TRACE"):
-        ...
+        try:
+            self.b.get_element_count(
+                f"text=/.*{text}.*/",
+                EQUALS,
+                0,
+                f"Frame should not have contained text '{text}' but it did."
+            )
+        except AssertionError as e:
+            self.log_source(loglevel)
+            raise e
+        logger.info(f"Current frame did not contain text '{text}'.")
 
     @keyword(tags=("IMPLEMENTED",))
     def delete_all_cookies(self):
@@ -805,9 +825,10 @@ class SLtoB:
             None, f"(arguments) => {{{javascript}}}", arg=args or None
         )
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def frame_should_contain(self, locator: WebElement, text: str, loglevel: str = "TRACE"):
-        ...
+        self.log_source(loglevel)
+        self.b.get_element_count(f"{locator} >>> text={text}", GREATER_THAN, 0)
 
     @keyword(tags=("IMPLEMENTED",))
     def get_all_links(self):
@@ -1599,6 +1620,10 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def select_frame(self, locator: WebElement):
+        try:
+            self.b.get_property(locator, "nodeName", EQUALS, "IFRAME")
+        except AssertionError:
+            raise NoSuchFrameException(f"Message: Unable to locate frame for element: {self.b.get_url()}")
         self.b.set_selector_prefix(f"{locator} >>>", scope=Scope.Global)
 
     @keyword(tags=("IMPLEMENTED",))
