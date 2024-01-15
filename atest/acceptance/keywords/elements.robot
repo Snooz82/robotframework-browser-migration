@@ -1,5 +1,6 @@
 *** Settings ***
 Documentation     Tests elements
+Suite Setup       Set Selenium Timeout    1 second
 Test Setup        Go To Page "links.html"
 Resource          ../resource.robot
 Library           String

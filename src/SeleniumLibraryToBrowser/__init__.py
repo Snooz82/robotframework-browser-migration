@@ -303,7 +303,22 @@ class SLtoB:
                 f'//input[@id="{loc}"]|'
                 f'//input[@name="{loc}"]|'
                 f'//input[@value="{loc}"]|'
-                f'//input[.="{loc}"]'
+                f'//input[@src="{loc}"]'
+            )
+            locator.original_locator = original_locator
+        return locator
+    
+    def get_input_locator(self, locator: WebElement) -> WebElement:
+        original_locator = locator.original_locator
+        loc = WebElement.is_default(locator)
+        if loc:
+            loc = loc.replace('"', '\\"')
+            locator = WebElement(
+                "xpath="
+                f'//input[@id="{loc}"]|'
+                f'//input[@name="{loc}"]|'
+                f'//input[@value="{loc}"]|'
+                f'//input[@src="{loc}"]'
             )
             locator.original_locator = original_locator
         return locator
@@ -392,9 +407,9 @@ class SLtoB:
     ):
         ...
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def assign_id_to_element(self, locator: WebElement, id: str):
-        ...
+        self.b.evaluate_javascript(locator, f"element => element.id = '{id}'")
 
     @keyword(tags=("IMPLEMENTED",))
     def capture_element_screenshot(
@@ -468,7 +483,12 @@ class SLtoB:
                 if mod.upper() not in dict(Keys.__members__):
                     raise ValueError(f"'{mod.upper()}' modifier does not match to Selenium Keys")
                 self.b.keyboard_key(KeyAction.down, Keys[mod.upper()].value)
-            self.b.click_with_options(locator, MouseButton.left)
+            node = self.b.get_property(locator, "nodeName")
+            if node == "OPTION":
+                value = self.b.get_property(locator, "value")
+                self.b.select_options_by(f"{locator} >> ..", SelectAttribute.value, value)
+            else:
+                self.b.click_with_options(locator, MouseButton.left)
         except ValueError as e:
             raise e
         except Exception as e:
@@ -495,7 +515,19 @@ class SLtoB:
         """See the Locating elements section for details about the locator syntax.
         When using the default locator strategy, images are searched using id, name, src and alt.
         """
-        locator = self.get_image_locator(locator)
+        img_locator = self.get_image_locator(locator)
+        try:
+            self.b.get_element_count(img_locator, GREATER_THAN, 0)
+            locator = img_locator
+        except AssertionError as e:
+            input_locator = self.get_input_locator(locator)
+            try:
+                self.b.get_element_count(input_locator, GREATER_THAN, 0)
+                locator = input_locator
+            except AssertionError:
+                raise ElementNotFound(
+                    f"Element with locator '{locator.original_locator}' not found."
+                ) from e
         self.click_element(locator, modifier)
 
     @keyword(tags=("IMPLEMENTED",))
@@ -530,9 +562,30 @@ class SLtoB:
     def close_window(self):
         self.b.close_page(SelectionType.CURRENT)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def cover_element(self, locator: WebElement):
-        ...
+        count = self.b.get_element_count(locator)
+        if not count:
+            raise ElementNotFound(f"No element with locator '{locator.original_locator}' found.")
+        self.b.evaluate_javascript(
+            locator,
+            "elements => {",
+            "    for (let old_element of elements) {"
+            "       let newDiv = document.createElement('div');",
+            "       newDiv.setAttribute('name', 'covered');",
+            "       newDiv.style.backgroundColor = 'blue';",
+            "       newDiv.style.zIndex = '999';",
+            "       newDiv.style.top = old_element.offsetTop + 'px';",
+            "       newDiv.style.left = old_element.offsetLeft + 'px';",
+            "       newDiv.style.height = old_element.offsetHeight + 'px';",
+            "       newDiv.style.width = old_element.offsetWidth + 'px';",
+            "       old_element.parentNode.insertBefore(newDiv, old_element);",
+            "       old_element.remove();",
+            "       newDiv.parentNode.style.overflow = 'hidden';",
+            "    }",
+            "}",
+            all_elements=True
+        )
 
     @keyword
     def create_webdriver(
@@ -586,19 +639,37 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def element_should_be_disabled(self, locator: WebElement):
-        self.b.get_element_states(locator, VALIDATE, "(readonly | disabled) & value")
+        value = self.b.get_element_states(locator, return_names=False)
+        if not (ElementState.readonly | ElementState.disabled) & value:
+            raise AssertionError(
+                f"Element '{locator.original_locator}' is enabled."
+            )
 
     @keyword(tags=("IMPLEMENTED",))
     def element_should_be_enabled(self, locator: WebElement):
-        self.b.get_element_states(locator, VALIDATE, "not bool((readonly | disabled) & value)")
+        value = self.b.get_element_states(locator, return_names=False)
+        if (ElementState.readonly | ElementState.disabled) & value:
+            raise AssertionError(
+                f"Element '{locator.original_locator}' is disabled."
+            )
 
     @keyword(tags=("IMPLEMENTED",))
     def element_should_be_focused(self, locator: WebElement):
-        self.b.get_element_states(locator, CONTAINS, "focused")
+        states = self.b.get_element_states(locator)
+        if "attached" not in states:
+            raise ElementNotFound(f"Element with locator '{locator.original_locator}' not found.")
+        if "focused" not in states:
+            raise AssertionError(
+                f"Element '{locator.original_locator}' does not have focus."
+            )
 
     @keyword(tags=("IMPLEMENTED",))
     def element_should_be_visible(self, locator: WebElement, message: Optional[str] = None):
-        self.b.get_element_states(locator, CONTAINS, "visible", message=message)
+        states = self.b.get_element_states(locator)
+        if "visible" not in states:
+            raise AssertionError(
+                message or f"The element '{locator.original_locator}' should be visible, but it is not."
+            )
 
     @keyword(tags=("IMPLEMENTED",))
     def element_should_contain(
@@ -626,7 +697,11 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def element_should_not_be_visible(self, locator: WebElement, message: Optional[str] = None):
-        self.b.get_element_states(locator, NOT_CONTAINS, "visible", message=message)
+        states = self.b.get_element_states(locator)
+        if "visible" in states:
+            raise AssertionError(
+                message or f"The element '{locator.original_locator}' should not be visible, but it is."
+            )
 
     @keyword(tags=("IMPLEMENTED",))
     def element_should_not_contain(
@@ -891,7 +966,12 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def get_webelement(self, locator: WebElement):
-        return self.b.get_element(locator)
+        try:
+            return self.b.get_element(locator)
+        except Exception as e:
+            raise ElementNotFound(
+                f"Element with locator '{locator.original_locator}' not found."
+            ) from e
 
     @keyword(tags=("IMPLEMENTED",))
     def get_webelements(self, locator: WebElement):
@@ -1130,8 +1210,8 @@ class SLtoB:
             self.log_source(loglevel)
             raise AssertionError(
                 message
-                or f"Page should have contained {limit} element(s), "
-                f"but it did contained {count} element(s)"
+                or f'Page should have contained "{limit}" element(s), '
+                f'but it did contain "{count}" element(s).'
             )
         if not count:
             self.log_source(loglevel)
@@ -1538,9 +1618,15 @@ class SLtoB:
     def simulate_event(self, locator: WebElement, event: str):
         ...
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def submit_form(self, locator: Optional[WebElement] = None):
-        ...
+        if locator is None:
+            locator = WebElement("css=form >> nth=0")
+        node = self.b.get_property(locator, "nodeName")
+        if node != "FORM":
+            raise ElementNotFound(f"Form with locator '{locator.original_locator}' not found.")
+        self.b.evaluate_javascript(locator, "form => form.submit()")
+
 
     @keyword(tags=("IMPLEMENTED",))
     def switch_browser(self, index_or_alias: str):
@@ -1871,6 +1957,17 @@ class SLtoB:
             timeout=timeout,
             message=error,
         )
+
+    @keyword(tags=("IMPLEMENTED",))
+    def get_element_states(
+        self,
+        selector: str,
+        assertion_operator: Optional[AO] = None,
+        *assertion_expected: Union[ElementState, str],
+        message: Optional[str] = None,
+        return_names=True,
+    ) -> Union[List[str], ElementState]:
+        return self.b.get_element_states(selector, assertion_operator, *assertion_expected, message=message, return_names=return_names)
 
     @keyword(tags=("IMPLEMENTED",))
     def wait_until_location_contains(
