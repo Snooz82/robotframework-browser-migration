@@ -1168,6 +1168,12 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def mouse_down(self, locator: WebElement):
+        try:
+            self.b.get_element_states(locator, CONTAINS, "attached")
+        except AssertionError:
+            raise ElementNotFound(
+                f"Element with locator '{locator.original_locator}' not found."
+            )
         self.b.hover(locator)
         self.b.mouse_button(MouseButtonAction.down)
 
@@ -1183,16 +1189,34 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def mouse_out(self, locator: WebElement):
+        try:
+            self.b.get_element_states(locator, CONTAINS, "attached")
+        except AssertionError:
+            raise ElementNotFound(
+                f"Element with locator '{locator.original_locator}' not found."
+            )
         bbox = self.b.get_boundingbox(locator, BoundingBoxFields.ALL)
         self.b.hover(locator)
         self.b.mouse_move_relative_to(locator, bbox.width / 2 + 1, bbox.height / 2 + 1, steps=10)
 
     @keyword(tags=("IMPLEMENTED",))
     def mouse_over(self, locator: WebElement):
+        try:
+            self.b.get_element_states(locator, CONTAINS, "attached")
+        except AssertionError:
+            raise ElementNotFound(
+                f"Element with locator '{locator.original_locator}' not found."
+            )
         self.b.hover(locator)
 
     @keyword(tags=("IMPLEMENTED",))
     def mouse_up(self, locator: WebElement):
+        try:
+            self.b.get_element_states(locator, CONTAINS, "attached")
+        except AssertionError:
+            raise ElementNotFound(
+                f"Element with locator '{locator.original_locator}' not found."
+            )
         self.b.hover(locator)
         self.b.mouse_button(MouseButtonAction.up)
 
@@ -1685,9 +1709,9 @@ class SLtoB:
     def set_screenshot_directory(self, path: Optional[str]):
         ...
 
-    @keyword(tags=("IMPLEMENTED",))
+    @keyword
     def set_selenium_implicit_wait(self, value: timedelta):
-        self.b.set_browser_timeout(value)
+        return self.b.set_browser_timeout(value)
 
     @keyword(tags=("IMPLEMENTED",))
     def set_selenium_speed(self, value: timedelta):
@@ -1705,9 +1729,25 @@ class SLtoB:
     def set_window_size(self, width: int, height: int, inner: bool = False):
         self.b.set_viewport_size(width, height)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def simulate_event(self, locator: WebElement, event: str):
-        ...
+        try:
+            self.b.get_element_states(locator, CONTAINS, "attached")
+        except AssertionError:
+            raise ElementNotFound(
+                f"Element with locator '{locator.original_locator}' not found."
+            )
+        script = """(element, eventName) => {
+                var evt = document.createEvent("HTMLEvents");
+                evt.initEvent(eventName, true, true);
+                return !element.dispatchEvent(evt);
+            }
+        """
+        self.b.evaluate_javascript(
+            locator,
+            script,
+            arg=event
+        )
 
     @keyword(tags=("IMPLEMENTED",))
     def submit_form(self, locator: Optional[WebElement] = None):
@@ -1974,14 +2014,23 @@ class SLtoB:
             locator, SelectAttribute.value, *[s for s in selection if s not in values]
         )
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def wait_for_condition(
         self,
         condition: str,
         timeout: Optional[timedelta] = None,
         error: Optional[str] = None,
     ):
-        ...
+        if "return" not in condition:
+            raise ValueError(
+                f"Condition '{condition}' did not have mandatory 'return'."
+            )
+        self._wait_until(
+            lambda: self.execute_javascript(condition) is True,
+            f"Condition '{condition}' did not become true in <TIMEOUT>.",
+            timeout,
+            error,
+        )
 
     @keyword(tags=("IMPLEMENTED",))
     def wait_until_element_contains(
@@ -2020,13 +2069,15 @@ class SLtoB:
         timeout: Optional[timedelta] = None,
         error: Optional[str] = None,
     ):
-        self.b.wait_for_condition(
-            ConditionInputs.element_states,
-            locator,
-            VALIDATE,
-            "not bool((detached | readonly | disabled) & value)",
-            timeout=timeout,
-            message=error,
+        try:
+            self.b.get_element_states(locator, CONTAINS, "attached")
+        except AssertionError:
+            raise ElementNotFound(f"Element with locator '{locator.original_locator}' not found.")
+        self._wait_until(
+            lambda: self.b.get_element_states(locator, THEN, "bool((value & (enabled | editable)) == (enabled | editable))"),
+            f"Element '{locator.original_locator}' was not enabled in <TIMEOUT>.",
+            timeout,
+            error,
         )
 
     @keyword(tags=("IMPLEMENTED",))
@@ -2036,18 +2087,13 @@ class SLtoB:
         timeout: Optional[timedelta] = None,
         error: Optional[str] = None,
     ):
-        if timeout is None:
-            timeout_str = self.b.millisecs_to_timestr(self.b.timeout)
-        else:
-            timeout_str = self.b.millisecs_to_timestr(timeout.total_seconds() * 1000)
-        self.b.wait_for_condition(
-            ConditionInputs.element_states,
-            locator,
-            NOT_CONTAINS,
-            "visible",
-            timeout=timeout,
-            message=error or f"Element '{locator.original_locator}' still visible after {timeout_str}.",
+        self._wait_until(
+            lambda: self.b.get_element_states(locator, THEN, "bool(value & (hidden | detached))"),
+            f"Element '{locator.original_locator}' still visible after <TIMEOUT>.",
+            timeout,
+            error,
         )
+
 
     @keyword(tags=("IMPLEMENTED",))
     def wait_until_element_is_visible(
@@ -2056,29 +2102,12 @@ class SLtoB:
         timeout: Optional[timedelta] = None,
         error: Optional[str] = None,
     ):
-        if timeout is None:
-            timeout_str = self.b.millisecs_to_timestr(self.b.timeout)
-        else:
-            timeout_str = self.b.millisecs_to_timestr(timeout.total_seconds() * 1000)
-        self.b.wait_for_condition(
-            ConditionInputs.element_states,
-            locator,
-            CONTAINS,
-            "visible",
-            timeout=timeout,
-            message=error or f"Element '{locator.original_locator}' not visible after {timeout_str}.",
+        self._wait_until(
+            lambda: self.b.get_element_states(locator, THEN, "bool(value & visible)"),
+            f"Element '{locator.original_locator}' not visible after <TIMEOUT>.",
+            timeout,
+            error,
         )
-
-    @keyword(tags=("IMPLEMENTED",))
-    def get_element_states(
-        self,
-        selector: str,
-        assertion_operator: Optional[AO] = None,
-        *assertion_expected: Union[ElementState, str],
-        message: Optional[str] = None,
-        return_names=True,
-    ) -> Union[List[str], ElementState]:
-        return self.b.get_element_states(selector, assertion_operator, *assertion_expected, message=message, return_names=return_names)
 
     @keyword(tags=("IMPLEMENTED",))
     def wait_until_location_contains(
@@ -2087,8 +2116,11 @@ class SLtoB:
         timeout: Optional[timedelta] = None,
         message: Optional[str] = None,
     ):
-        self.b.wait_for_function(
-            f"() => window.location.href.includes(`{expected}`)", timeout=timeout, message=message
+        self._wait_until(
+            lambda: expected in self.b.get_url(),
+            f"Location did not contain '{expected}' in <TIMEOUT>.",
+            timeout,
+            message
         )
 
     @keyword(tags=("IMPLEMENTED",))
@@ -2098,8 +2130,11 @@ class SLtoB:
         timeout: Optional[timedelta] = None,
         message: Optional[str] = None,
     ):
-        self.b.wait_for_function(
-            f"() => !window.location.href.includes(`{location}`)", timeout=timeout, message=message
+        self._wait_until(
+            lambda: location not in self.b.get_url(),
+            f"Location did contain '{location}' in <TIMEOUT>.",
+            timeout,
+            message
         )
 
     @keyword(tags=("IMPLEMENTED",))
@@ -2109,9 +2144,13 @@ class SLtoB:
         timeout: Optional[timedelta] = None,
         message: Optional[str] = None,
     ):
-        self.b.wait_for_function(
-            f"() => window.location.href === `{expected}`", timeout=timeout, message=message
+        self._wait_until(
+            lambda: expected == self.b.get_url(),
+            f"Location did not become '{expected}' in <TIMEOUT>.",
+            timeout,
+            message
         )
+
 
     @keyword(tags=("IMPLEMENTED",))
     def wait_until_location_is_not(
@@ -2120,8 +2159,11 @@ class SLtoB:
         timeout: Optional[timedelta] = None,
         message: Optional[str] = None,
     ):
-        self.b.wait_for_function(
-            f"() => window.location.href !== `{location}`", timeout=timeout, message=message
+        self._wait_until(
+            lambda: location != self.b.get_url(),
+            f"Location is '{location}' in <TIMEOUT>.",
+            timeout,
+            message
         )
 
     @keyword(tags=("IMPLEMENTED",))
@@ -2141,23 +2183,22 @@ class SLtoB:
     @keyword(tags=("IMPLEMENTED",))
     def wait_until_page_contains_element(
         self,
-        locator: Optional[WebElement],
+        locator: WebElement,
         timeout: Optional[timedelta] = None,
         error: Optional[str] = None,
         limit: Optional[int] = None,
     ):
         if limit is None:
-            op = GREATER_THAN
-            limit = 0
+            func = lambda: self.b.get_element_count(locator) > 0
+            msg = f"Element '{locator.original_locator}' did not appear in <TIMEOUT>."
         else:
-            op = EQUALS
-        self.b.wait_for_condition(
-            ConditionInputs.element_count,
-            locator,
-            op,
-            limit,
-            timeout=timeout,
-            message=error or f"Element '{locator.original_locator}' did not appear in <TIMEOUT>.",
+            func = lambda: self.b.get_element_count(locator) == limit
+            msg = f'Page should have contained "{limit}" {locator.original_locator} element(s) within <TIMEOUT>.'
+        self._wait_until(
+            func,
+            msg,
+            timeout,
+            error,
         )
 
     @keyword(tags=("IMPLEMENTED",))
@@ -2183,17 +2224,16 @@ class SLtoB:
         limit: Optional[int] = None,
     ):
         if limit is None:
-            operator = EQUALS
-            limit = 0
+            func = lambda: self.b.get_element_count(locator) == 0
+            msg = f"Element '{locator.original_locator}' did not disappear in <TIMEOUT>."
         else:
-            operator = NOT_EQUALS
-        self.b.wait_for_condition(
-            ConditionInputs.element_count,
-            locator,
-            operator,
-            limit,
-            timeout=timeout,
-            message=error or f"Element '{locator.original_locator}' did not appear in <TIMEOUT>.",
+            func = lambda: self.b.get_element_count(locator) != limit
+            msg = f'Page should have not contained "{limit}" {locator.original_locator} element(s) within <TIMEOUT>.'
+        self._wait_until(
+            func,
+            msg,
+            timeout,
+            error,
         )
 
     def _wait_until(self, condition, error, timeout: timedelta = None, custom_error=None):
