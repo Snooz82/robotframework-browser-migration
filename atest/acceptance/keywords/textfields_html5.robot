@@ -34,7 +34,7 @@ Input field type number
 Input field type range
     Input Text    id:range        72
     ${value} =    Get Value       id:range
-    Should Be Equal As Strings    ${value}    50    # Default value does not change when input is range
+    Should Be Equal As Strings    ${value}    72    # was 50 in SL but that was a bug
 
 Input field type search
     Input Text    id:search       tidii

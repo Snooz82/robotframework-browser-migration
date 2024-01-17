@@ -1,3 +1,4 @@
+from collections import namedtuple
 import re
 import time
 from datetime import timedelta
@@ -6,6 +7,8 @@ from pathlib import Path
 from typing import Any, List, Optional, Union
 
 from Browser import Browser
+from Browser.generated.playwright_pb2 import Request
+from Browser.base import LibraryComponent
 from Browser.assertion_engine import AssertionOperator as AO
 from Browser.utils.data_types import *
 from robot.api import SkipExecution, logger
@@ -20,7 +23,7 @@ from robotlibcore import DynamicCore, keyword
 
 from SeleniumLibraryToBrowser.keys import Keys
 
-from .errors import ElementNotFound, NoSuchElementException, NoSuchFrameException
+from .errors import ElementNotFound, InvalidArgumentException, NoSuchElementException, NoSuchFrameException
 
 try:
     from SeleniumLibrary import SeleniumLibrary
@@ -286,8 +289,13 @@ class SLtoB:
             BuiltIn().import_library(name="Browser", *self._browser_args)
             self._browser = BuiltIn().get_library_instance("Browser")
             self._browser.set_strict_mode(False, Scope.Global)
+            self._browser._auto_closing_level = AutoClosingLevel.MANUAL
             BuiltIn().set_library_search_order("SeleniumLibraryToBrowser")
         return self._browser
+    
+    @property
+    def library_comp(self) -> LibraryComponent:
+        return LibraryComponent(self.b)
 
     def get_button_locator(self, locator: WebElement) -> WebElement:
         original_locator = locator.original_locator
@@ -417,14 +425,36 @@ class SLtoB:
     @keyword(tags=("IMPLEMENTED",))
     def capture_element_screenshot(
         self,
-        locator: Optional[WebElement],
+        locator: WebElement,
         filename: str = "selenium-element-screenshot-{index}.png",
     ):
-        self.b.take_screenshot(filename=re.sub(".png$", "", filename), selector=locator)
+        if not self.b.get_browser_catalog():
+            logger.info(
+                "Cannot capture screenshot from element because no browser is open."
+            )
+            return
+        try:
+            self.b.get_element_states(locator, CONTAINS, "attached")
+        except AssertionError:
+            raise ElementNotFound(
+                f"Element with locator '{locator.original_locator}' not found."
+            )
+        if not Path(filename).is_absolute():
+            output_dir = BuiltIn().get_variable_value("${OUTPUTDIR}", default=".")
+            filename = str(Path(output_dir, filename).resolve())
+        return self.b.take_screenshot(filename=re.sub(".png$", "", filename), selector=locator)
 
     @keyword(tags=("IMPLEMENTED",))
     def capture_page_screenshot(self, filename: str = "selenium-screenshot-{index}.png"):
-        self.b.take_screenshot(filename=re.sub(".png$", "", filename))
+        if not self.b.get_browser_catalog():
+            logger.info(
+                "Cannot capture screenshot from element because no browser is open."
+            )
+            return
+        if not Path(filename).is_absolute():
+            output_dir = BuiltIn().get_variable_value("${OUTPUTDIR}", default=".")
+            filename = str(Path(output_dir, filename).resolve())
+        return self.b.take_screenshot(filename=re.sub(".png$", "", filename))
 
     @keyword(tags=("IMPLEMENTED",))
     def checkbox_should_be_selected(self, locator: WebElement):
@@ -457,7 +487,20 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def choose_file(self, locator: WebElement, file_path: str):
-        self.b.upload_file_by_selector(locator, file_path)
+        file = Path(file_path).resolve()
+        logger.info(f"Sending {file} to browser.")
+        if not file.exists():
+            raise InvalidArgumentException(f"Message: File not found: {file}")
+        # self.b.upload_file_by_selector(locator, file_path)
+        with self.b.playwright.grpc_channel() as stub:
+            response = stub.UploadFileBySelector(
+                Request().FileBySelector(
+                    path=str(file),
+                    selector=locator,
+                    strict=self.library_comp.strict_mode,
+                )
+            )
+            logger.debug(response.log)
 
     @keyword(tags=("IMPLEMENTED",))
     def clear_element_text(self, locator: WebElement):
@@ -799,11 +842,18 @@ class SLtoB:
             raise AssertionError(msg)
 
     @keyword
-    def execute_async_javascript(self, *code: WebElement):
+    def execute_async_javascript(self, *code: str):
         ...
 
     @keyword(tags=("IMPLEMENTED",))
-    def execute_javascript(self, *code: str):
+    def execute_javascript(self, *code: Any):
+        javascript, args = self._analyse_js(code)
+        logger.debug(javascript)
+        return self.b.evaluate_javascript(
+            None, f"(arguments) => {{{javascript}}}", arg=args or None
+        )
+
+    def _analyse_js(self, code):
         js = []
         args = []
         if "JAVASCRIPT" in code or "ARGUMENTS" in code:
@@ -820,10 +870,7 @@ class SLtoB:
             javascript = "".join(code)
         if Path(javascript).is_file():
             javascript = Path(javascript).read_text(encoding="utf-8")
-        logger.console(javascript)
-        return self.b.evaluate_javascript(
-            None, f"(arguments) => {{{javascript}}}", arg=args or None
-        )
+        return javascript, args
 
     @keyword(tags=("IMPLEMENTED",))
     def frame_should_contain(self, locator: WebElement, text: str, loglevel: str = "TRACE"):
@@ -1103,8 +1150,17 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def input_text(self, locator: WebElement, text: str, clear: bool = True):
+        if self.b.get_property(locator, "nodeName") == "INPUT":
+            if self.b.get_attribute(locator, "type").lower() == "file":
+                self.choose_file(locator, text)
+                return
         self.b.press_keys(locator, "End")
-        self.b.type_text(locator, text, clear=clear)
+        try:
+            self.b.type_text(locator, text, clear=clear)
+        except Exception as e:
+            if not clear:
+                raise e
+            self.b.fill_text(locator, text)
 
     @keyword
     def input_text_into_alert(
@@ -1569,13 +1625,123 @@ class SLtoB:
                     message or f"Page should not have contained text field '{locator.original_locator}'."
                 )
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def press_key(self, locator: WebElement, key: str):
-        raise NotImplementedError("keyword is not implemented")
+        if key.startswith("\\") and len(key) > 1:
+            key = self._map_ascii_key_code_to_key(int(key[1:]))
+        try:
+            self.b.get_element_states(locator, CONTAINS, "attached")
+        except AssertionError:
+            raise ElementNotFound(
+                f"Element with locator '{locator.original_locator}' not found."
+            )
+        if isinstance(key, Keys):
+            self.b.keyboard_key(KeyAction.press, key.value)
+        else:
+            self.press_keys(locator, key)
 
-    @keyword
+    def _map_ascii_key_code_to_key(self, key_code):
+        map = {
+            0: Keys.NULL,
+            8: Keys.BACK_SPACE,
+            9: Keys.TAB,
+            10: Keys.RETURN,
+            13: Keys.ENTER,
+            24: Keys.CANCEL,
+            27: Keys.ESCAPE,
+            32: Keys.SPACE,
+            42: Keys.MULTIPLY,
+            43: Keys.ADD,
+            44: Keys.SEPARATOR,
+            45: Keys.SUBTRACT,
+            56: Keys.DECIMAL,
+            57: Keys.DIVIDE,
+            59: Keys.SEMICOLON,
+            61: Keys.EQUALS,
+            127: Keys.DELETE,
+        }
+        key = map.get(key_code)
+        if key is None:
+            key = chr(key_code)
+        return key
+
+    @keyword(tags=("IMPLEMENTED",))
     def press_keys(self, locator: Optional[WebElement] = None, *keys: str):
-        ...
+        parsed_keys = self._parse_keys(*keys)
+        if not self._is_noney(locator):
+            logger.info(f"Sending key(s) {keys} to {locator.original_locator} element.")
+            try:
+                self.b.get_element_states(locator, CONTAINS, "attached")
+            except AssertionError:
+                raise ElementNotFound(
+                    f"Element with locator '{locator.original_locator}' not found."
+                )
+            self.b.click(locator)  # ToDo: i would consider this a bug. it should focus; not click...
+        else:
+            logger.info(f"Sending key(s) {keys} to page.")
+        for parsed_key in parsed_keys:
+            for key in parsed_key:
+                if key.special:
+                    self.b.keyboard_key(KeyAction.down, key.converted.value)
+                else:
+                    for char in key.converted:
+                        try:
+                            self.b.keyboard_key(KeyAction.press, char)
+                        except Exception as e:
+                            self.b.keyboard_input(KeyboardInputAction.type, char)
+            self._special_key_up(None, parsed_key)
+
+    def _special_key_up(self, actions, parsed_key):
+        for key in reversed(parsed_key):
+            if key.special:
+                self.b.keyboard_key(KeyAction.up, key.converted.value)
+
+    def _is_noney(self, item):
+        return item is None or isinstance(item, WebElement) and item.original_locator.upper() == "NONE"
+
+    def _parse_keys(self, *keys):
+        if not keys:
+            raise AssertionError('"keys" argument can not be empty.')
+        list_keys = []
+        for key in keys:
+            separate_keys = self._separate_key(key)
+            separate_keys = self._convert_special_keys(separate_keys)
+            list_keys.append(separate_keys)
+        return list_keys
+    
+    def _separate_key(self, key):
+        one_key = ""
+        list_keys = []
+        for char in key:
+            if char == "+" and one_key != "":
+                list_keys.append(one_key)
+                one_key = ""
+            else:
+                one_key += char
+        if one_key:
+            list_keys.append(one_key)
+        return list_keys
+    
+    def _convert_special_keys(self, keys):
+        KeysRecord = namedtuple("KeysRecord", "converted, original special")
+        converted_keys = []
+        for key in keys:
+            key = self._parse_aliases(key)
+            if self._selenium_keys_has_attr(key):
+                converted_keys.append(KeysRecord(getattr(Keys, key), key, True))
+            else:
+                converted_keys.append(KeysRecord(key, key, False))
+        return converted_keys
+    
+    def _parse_aliases(self, key):
+        if key == "CTRL":
+            return "CONTROL"
+        if key == "ESC":
+            return "ESCAPE"
+        return key
+    
+    def _selenium_keys_has_attr(self, key):
+        return hasattr(Keys, key)
 
     @keyword(tags=("IMPLEMENTED",))
     def radio_button_should_be_set_to(self, group_name: str, value: str):
@@ -1712,6 +1878,10 @@ class SLtoB:
     @keyword
     def set_selenium_implicit_wait(self, value: timedelta):
         return self.b.set_browser_timeout(value)
+
+    @keyword
+    def set_selenium_page_load_timeout(self, value: timedelta) -> str:
+        ...
 
     @keyword(tags=("IMPLEMENTED",))
     def set_selenium_speed(self, value: timedelta):

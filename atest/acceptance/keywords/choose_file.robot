@@ -39,7 +39,7 @@ Choose File With Grid From Library Using SL choose_file method
     [Setup]    Go To Page "forms/file_upload_form.html"
     Touch    ${CURDIR}${/}temp42.txt
     Import Library    ${CURDIR}/../../resources/testlibs/ChooseFileLib.py
-    ChooseFileLib.my_choose_file    file_to_upload    ${CURDIR}${/}temp42.txt
+    ChooseFileLib.my_choose_file    css=[name="file_to_upload"]    ${CURDIR}${/}temp42.txt
     Textfield Value Should Be    file_to_upload    C:\\fakepath\\temp42.txt
     [Teardown]    Remove File    ${CURDIR}${/}temp42.txt
 

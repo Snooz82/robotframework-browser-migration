@@ -1,4 +1,5 @@
 *** Settings ***
+Suite Setup       Open Browser To Start Page
 Test Setup        Go To Page "forms/input_special_keys.html"
 Resource          ../resource.robot
 Library           ../../resources/testlibs/ctrl_or_command.py
@@ -12,7 +13,7 @@ Press Keys Normal Keys
     Press Keys    ${element}    AAAAA
     Click Button    OK
     Wait Until Page Contains    AAAAA
-
+    
 Press Keys Normal Keys Many Times
     Press Keys    text_field    AAAAA+BBB
     Click Button    OK

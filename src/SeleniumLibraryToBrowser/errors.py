@@ -28,6 +28,9 @@ class NoSuchElementException(Exception):
 class NoSuchFrameException(Exception):
     pass
 
+class InvalidArgumentException(Exception):
+    pass
+
 class WindowNotFound(SeleniumLibraryException):
     pass
 

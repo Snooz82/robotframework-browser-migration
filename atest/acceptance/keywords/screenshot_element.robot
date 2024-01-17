@@ -16,7 +16,7 @@ Capture Element Screenshot When Element Does Not Exist
     ...    Capture Element Screenshot    id:not_here
 
 Capture Element Screenshot When Path Does Not Exist
-    [Setup]    Remove Directory    ${OUTPUTDIR}/elements_pictures
+    [Setup]    Remove Directory    ${OUTPUTDIR}/elements_pictures    recursive=True
     ${path} =    Capture Element Screenshot    id:nothing    ${OUTPUTDIR}${/}elements_pictures${/}selenium-element-screenshot-1.png
     File Should Exist    ${OUTPUTDIR}${/}elements_pictures${/}selenium-element-screenshot-1.png
     Should Be Equal    ${path}    ${OUTPUTDIR}${/}elements_pictures${/}selenium-element-screenshot-1.png
