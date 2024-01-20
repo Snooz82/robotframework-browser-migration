@@ -1,5 +1,7 @@
 from collections import namedtuple
+import os
 import re
+import sys
 import time
 from datetime import timedelta
 from itertools import count
@@ -13,7 +15,7 @@ from Browser.assertion_engine import AssertionOperator as AO
 from Browser.utils.data_types import *
 from robot.api import SkipExecution, logger
 from robot.api.deco import library
-from robot.libraries.BuiltIn import BuiltIn
+from robot.libraries.BuiltIn import BuiltIn, RobotNotRunningError
 from robot.result.model import Message
 from robot.result.model import TestCase as ResultTestCase
 from robot.running import EXECUTION_CONTEXTS
@@ -40,6 +42,10 @@ ENDS_WITH = AO["$="]
 THEN = AO["then"]
 VALIDATE = AO["validate"]
 GREATER_THAN = AO[">"]
+
+DEFAULT_FILENAME_PAGE = "selenium-screenshot-{index}.png"
+DEFAULT_FILENAME_ELEMENT = "selenium-element-screenshot-{index}.png"
+EMBED = "EMBED"
 
 
 __version__ = "0.8.0"
@@ -286,16 +292,29 @@ class SLtoB:
     @property
     def b(self) -> Browser:
         if self._browser is None:
-            BuiltIn().import_library(name="Browser", *self._browser_args)
-            self._browser = BuiltIn().get_library_instance("Browser")
+            # BuiltIn().import_library(name="Browser", *self._browser_args)
+            try:
+                self._browser = BuiltIn().get_library_instance("Browser")
+            except Exception as e:
+                self._browser = Browser(*self._browser_args)
             self._browser.set_strict_mode(False, Scope.Global)
             self._browser._auto_closing_level = AutoClosingLevel.MANUAL
-            BuiltIn().set_library_search_order("SeleniumLibraryToBrowser")
+            # BuiltIn().set_library_search_order("SeleniumLibraryToBrowser")
         return self._browser
     
     @property
     def library_comp(self) -> LibraryComponent:
         return LibraryComponent(self.b)
+
+    @property
+    def log_dir(self) -> Path:
+        try:
+            logfile = BuiltIn().get_variable_value("${LOG FILE}", None)
+            if logfile is None or logfile == "NONE":
+                return Path(BuiltIn().get_variable_value("${OUTPUTDIR}", Path.cwd()))
+            return Path(logfile).parent
+        except RobotNotRunningError:
+            return Path.cwd()
 
     def get_button_locator(self, locator: WebElement) -> WebElement:
         original_locator = locator.original_locator
@@ -426,9 +445,9 @@ class SLtoB:
     def capture_element_screenshot(
         self,
         locator: WebElement,
-        filename: str = "selenium-element-screenshot-{index}.png",
+        filename: str = DEFAULT_FILENAME_ELEMENT,
     ):
-        if not self.b.get_browser_catalog():
+        if not self.b.get_page_ids():
             logger.info(
                 "Cannot capture screenshot from element because no browser is open."
             )
@@ -439,22 +458,20 @@ class SLtoB:
             raise ElementNotFound(
                 f"Element with locator '{locator.original_locator}' not found."
             )
-        if not Path(filename).is_absolute():
-            output_dir = BuiltIn().get_variable_value("${OUTPUTDIR}", default=".")
-            filename = str(Path(output_dir, filename).resolve())
-        return self.b.take_screenshot(filename=re.sub(".png$", "", filename), selector=locator)
+        screenshot_file = self._get_screenshot_path(filename)
+        screenshot_path = self.b.take_screenshot(filename=re.sub(".png$", "", screenshot_file), selector=locator)
+        return screenshot_path if not EMBED else EMBED
 
     @keyword(tags=("IMPLEMENTED",))
-    def capture_page_screenshot(self, filename: str = "selenium-screenshot-{index}.png"):
-        if not self.b.get_browser_catalog():
+    def capture_page_screenshot(self, filename: str = DEFAULT_FILENAME_PAGE):
+        if not self.b.get_page_ids():
             logger.info(
                 "Cannot capture screenshot from element because no browser is open."
             )
             return
-        if not Path(filename).is_absolute():
-            output_dir = BuiltIn().get_variable_value("${OUTPUTDIR}", default=".")
-            filename = str(Path(output_dir, filename).resolve())
-        return self.b.take_screenshot(filename=re.sub(".png$", "", filename))
+        screenshot_file = self._get_screenshot_path(filename)
+        screenshot_path =  self.b.take_screenshot(filename=re.sub(".png$", "", screenshot_file))
+        return screenshot_path if not EMBED else EMBED
 
     @keyword(tags=("IMPLEMENTED",))
     def checkbox_should_be_selected(self, locator: WebElement):
@@ -1871,9 +1888,11 @@ class SLtoB:
     def set_focus_to_element(self, locator: WebElement):
         self.b.focus(locator)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def set_screenshot_directory(self, path: Optional[str]):
-        ...
+        previous = self.screenshot_root_directory
+        self.screenshot_root_directory = path
+        return previous
 
     @keyword
     def set_selenium_implicit_wait(self, value: timedelta):
@@ -2427,3 +2446,14 @@ class SLtoB:
                 not_found = None
             time.sleep(0.2)
         raise AssertionError(not_found or error)
+    
+    def _create_directory(self, path):
+        target_dir = Path(path).parent
+        if not target_dir.exists():
+            target_dir.mkdir(parents=True)
+
+    def _get_screenshot_path(self, filename: str) -> str:
+        if self.screenshot_root_directory.upper() == EMBED:
+            return EMBED
+        directory = Path(self.screenshot_root_directory or self.log_dir)
+        return str(Path(directory, filename).resolve())
