@@ -25,7 +25,12 @@ from robotlibcore import DynamicCore, keyword
 
 from SeleniumLibraryToBrowser.keys import Keys
 
-from .errors import ElementNotFound, InvalidArgumentException, NoSuchElementException, NoSuchFrameException
+from .errors import (
+    ElementNotFound,
+    InvalidArgumentException,
+    NoSuchElementException,
+    NoSuchFrameException,
+)
 
 try:
     from SeleniumLibrary import SeleniumLibrary
@@ -301,7 +306,7 @@ class SLtoB:
             self._browser._auto_closing_level = AutoClosingLevel.MANUAL
             # BuiltIn().set_library_search_order("SeleniumLibraryToBrowser")
         return self._browser
-    
+
     @property
     def library_comp(self) -> LibraryComponent:
         return LibraryComponent(self.b)
@@ -334,7 +339,7 @@ class SLtoB:
             )
             locator.original_locator = original_locator
         return locator
-    
+
     def get_input_locator(self, locator: WebElement) -> WebElement:
         original_locator = locator.original_locator
         loc = WebElement.is_default(locator)
@@ -400,7 +405,7 @@ class SLtoB:
             if self.b.get_element_count(f"iframe, frame >> nth={index} >>> {locator}"):
                 return True
         return False
-    
+
     def type_converter(self, argument: Any) -> str:
         return type(argument).__name__.lower()
 
@@ -446,32 +451,36 @@ class SLtoB:
         self,
         locator: WebElement,
         filename: str = DEFAULT_FILENAME_ELEMENT,
-    ):
+    ) -> str:
         if not self.b.get_page_ids():
-            logger.info(
-                "Cannot capture screenshot from element because no browser is open."
-            )
+            logger.info("Cannot capture screenshot from element because no browser is open.")
             return
         try:
             self.b.get_element_states(locator, CONTAINS, "attached")
         except AssertionError:
-            raise ElementNotFound(
-                f"Element with locator '{locator.original_locator}' not found."
-            )
-        screenshot_file = self._get_screenshot_path(filename)
-        screenshot_path = self.b.take_screenshot(filename=re.sub(".png$", "", screenshot_file), selector=locator)
-        return screenshot_path if not EMBED else EMBED
+            raise ElementNotFound(f"Element with locator '{locator.original_locator}' not found.")
+        embedding = self._decide_embedded(filename)
+        screenshot_file = (
+            EMBED
+            if embedding
+            else re.sub(".png$", "", self._get_screenshot_path(filename, embedding))
+        )
+        screenshot_path = self.b.take_screenshot(filename=screenshot_file, selector=locator)
+        return EMBED if embedding else screenshot_path
 
     @keyword(tags=("IMPLEMENTED",))
-    def capture_page_screenshot(self, filename: str = DEFAULT_FILENAME_PAGE):
+    def capture_page_screenshot(self, filename: str = DEFAULT_FILENAME_PAGE) -> str:
         if not self.b.get_page_ids():
-            logger.info(
-                "Cannot capture screenshot from element because no browser is open."
-            )
+            logger.info("Cannot capture screenshot from element because no browser is open.")
             return
-        screenshot_file = self._get_screenshot_path(filename)
-        screenshot_path =  self.b.take_screenshot(filename=re.sub(".png$", "", screenshot_file))
-        return screenshot_path if not EMBED else EMBED
+        embedding = self._decide_embedded(filename)
+        screenshot_file = (
+            EMBED
+            if embedding
+            else re.sub(".png$", "", self._get_screenshot_path(filename, embedding))
+        )
+        screenshot_path = self.b.take_screenshot(filename=screenshot_file)
+        return EMBED if embedding else screenshot_path
 
     @keyword(tags=("IMPLEMENTED",))
     def checkbox_should_be_selected(self, locator: WebElement):
@@ -647,7 +656,7 @@ class SLtoB:
             "       newDiv.parentNode.style.overflow = 'hidden';",
             "    }",
             "}",
-            all_elements=True
+            all_elements=True,
         )
 
     @keyword
@@ -663,7 +672,7 @@ class SLtoB:
                 f"text=/.*{text}.*/",
                 GREATER_THAN,
                 0,
-                f"Frame should have contained text '{text}' but did not."
+                f"Frame should have contained text '{text}' but did not.",
             )
         except AssertionError as e:
             self.log_source(loglevel)
@@ -677,7 +686,7 @@ class SLtoB:
                 f"text=/.*{text}.*/",
                 EQUALS,
                 0,
-                f"Frame should not have contained text '{text}' but it did."
+                f"Frame should not have contained text '{text}' but it did.",
             )
         except AssertionError as e:
             self.log_source(loglevel)
@@ -733,17 +742,13 @@ class SLtoB:
     def element_should_be_disabled(self, locator: WebElement):
         value = self.b.get_element_states(locator, return_names=False)
         if not (ElementState.readonly | ElementState.disabled) & value:
-            raise AssertionError(
-                f"Element '{locator.original_locator}' is enabled."
-            )
+            raise AssertionError(f"Element '{locator.original_locator}' is enabled.")
 
     @keyword(tags=("IMPLEMENTED",))
     def element_should_be_enabled(self, locator: WebElement):
         value = self.b.get_element_states(locator, return_names=False)
         if (ElementState.readonly | ElementState.disabled) & value:
-            raise AssertionError(
-                f"Element '{locator.original_locator}' is disabled."
-            )
+            raise AssertionError(f"Element '{locator.original_locator}' is disabled.")
 
     @keyword(tags=("IMPLEMENTED",))
     def element_should_be_focused(self, locator: WebElement):
@@ -751,16 +756,15 @@ class SLtoB:
         if "attached" not in states:
             raise ElementNotFound(f"Element with locator '{locator.original_locator}' not found.")
         if "focused" not in states:
-            raise AssertionError(
-                f"Element '{locator.original_locator}' does not have focus."
-            )
+            raise AssertionError(f"Element '{locator.original_locator}' does not have focus.")
 
     @keyword(tags=("IMPLEMENTED",))
     def element_should_be_visible(self, locator: WebElement, message: Optional[str] = None):
         states = self.b.get_element_states(locator)
         if "visible" not in states:
             raise AssertionError(
-                message or f"The element '{locator.original_locator}' should be visible, but it is not."
+                message
+                or f"The element '{locator.original_locator}' should be visible, but it is not."
             )
 
     @keyword(tags=("IMPLEMENTED",))
@@ -770,7 +774,7 @@ class SLtoB:
         expected: Optional[str],
         message: Optional[str] = None,
         ignore_case: bool = False,
-    ):  
+    ):
         try:
             value = self.b.get_text(locator)
         except Exception as e:
@@ -792,7 +796,8 @@ class SLtoB:
         states = self.b.get_element_states(locator)
         if "visible" in states:
             raise AssertionError(
-                message or f"The element '{locator.original_locator}' should not be visible, but it is."
+                message
+                or f"The element '{locator.original_locator}' should not be visible, but it is."
             )
 
     @keyword(tags=("IMPLEMENTED",))
@@ -837,7 +842,6 @@ class SLtoB:
             value = value.lower()
         if expected != value:
             raise AssertionError(msg)
-            
 
     @keyword(tags=("IMPLEMENTED",))
     def element_text_should_not_be(
@@ -926,9 +930,7 @@ class SLtoB:
         try:
             self.b.get_element_states(locator, CONTAINS, "attached")
         except AssertionError:
-            raise ElementNotFound(
-                f"Element with locator '{locator.original_locator}' not found."
-            )
+            raise ElementNotFound(f"Element with locator '{locator.original_locator}' not found.")
         try:
             return self.b.get_property(locator, attribute)
         except AttributeError:
@@ -946,9 +948,7 @@ class SLtoB:
         try:
             self.b.get_element_states(locator, CONTAINS, "attached")
         except AssertionError:
-            raise ElementNotFound(
-                f"Element with locator '{locator.original_locator}' not found."
-            )
+            raise ElementNotFound(f"Element with locator '{locator.original_locator}' not found.")
         value = self.b.get_boundingbox(locator, BoundingBoxFields.ALL)
         return value["width"], value["height"]
 
@@ -957,9 +957,7 @@ class SLtoB:
         try:
             self.b.get_element_states(locator, CONTAINS, "attached")
         except AssertionError:
-            raise ElementNotFound(
-                f"Element with locator '{locator.original_locator}' not found."
-            )
+            raise ElementNotFound(f"Element with locator '{locator.original_locator}' not found.")
         return self.b.get_boundingbox(locator, BoundingBoxFields.x)
 
     @keyword(tags=("IMPLEMENTED",))
@@ -1086,9 +1084,7 @@ class SLtoB:
         try:
             self.b.get_element_states(locator, CONTAINS, "attached")
         except AssertionError:
-            raise ElementNotFound(
-                f"Element with locator '{locator.original_locator}' not found."
-            )
+            raise ElementNotFound(f"Element with locator '{locator.original_locator}' not found.")
         return self.b.get_boundingbox(locator, BoundingBoxFields.y)
 
     @keyword(tags=("IMPLEMENTED",))
@@ -1194,7 +1190,9 @@ class SLtoB:
         selected_labels = self.b.get_selected_options(locator, SelectAttribute.label)
         selected_values = self.b.get_selected_options(locator, SelectAttribute.value)
         expected_str = " | ".join(expected)
-        actual_str = " | ".join([f"{label} ({value})" for label, value in zip(selected_labels, selected_values)])
+        actual_str = " | ".join(
+            [f"{label} ({value})" for label, value in zip(selected_labels, selected_values)]
+        )
         assert sorted(selected_labels) == sorted(expected) or sorted(selected_values) == sorted(
             expected
         ), f"List '{locator.original_locator}' should have had selection [ {expected_str} ] but selection was [ {actual_str} ]."
@@ -1204,16 +1202,26 @@ class SLtoB:
         # self.b.get_selected_options(locator, SelectAttribute.label, EQUALS)
         selected_labels = self.b.get_selected_options(locator, SelectAttribute.label)
         selected_values = self.b.get_selected_options(locator, SelectAttribute.value)
-        actual_str = " | ".join([f"{label} ({value})" for label, value in zip(selected_labels, selected_values)])
-        assert len(selected_labels) == 0, f"List '{locator.original_locator}' should have had no selection but selection was [ {actual_str} ]."
+        actual_str = " | ".join(
+            [f"{label} ({value})" for label, value in zip(selected_labels, selected_values)]
+        )
+        assert (
+            len(selected_labels) == 0
+        ), f"List '{locator.original_locator}' should have had no selection but selection was [ {actual_str} ]."
 
     @keyword(tags=("IMPLEMENTED",))
     def location_should_be(self, url: str, message: Optional[str] = None):
-        self.b.get_url(EQUALS, url, message or "Location should have been {expected} but was {value}.")
+        self.b.get_url(
+            EQUALS, url, message or "Location should have been {expected} but was {value}."
+        )
 
     @keyword(tags=("IMPLEMENTED",))
     def location_should_contain(self, expected: str, message: Optional[str] = None):
-        self.b.get_url(CONTAINS, expected, message or "Location should have contained {expected} but it was {value}.")
+        self.b.get_url(
+            CONTAINS,
+            expected,
+            message or "Location should have contained {expected} but it was {value}.",
+        )
 
     @keyword(tags=("IMPLEMENTED",))
     def log_location(self):
@@ -1244,9 +1252,7 @@ class SLtoB:
         try:
             self.b.get_element_states(locator, CONTAINS, "attached")
         except AssertionError:
-            raise ElementNotFound(
-                f"Element with locator '{locator.original_locator}' not found."
-            )
+            raise ElementNotFound(f"Element with locator '{locator.original_locator}' not found.")
         self.b.hover(locator)
         self.b.mouse_button(MouseButtonAction.down)
 
@@ -1265,9 +1271,7 @@ class SLtoB:
         try:
             self.b.get_element_states(locator, CONTAINS, "attached")
         except AssertionError:
-            raise ElementNotFound(
-                f"Element with locator '{locator.original_locator}' not found."
-            )
+            raise ElementNotFound(f"Element with locator '{locator.original_locator}' not found.")
         bbox = self.b.get_boundingbox(locator, BoundingBoxFields.ALL)
         self.b.hover(locator)
         self.b.mouse_move_relative_to(locator, bbox.width / 2 + 1, bbox.height / 2 + 1, steps=10)
@@ -1277,9 +1281,7 @@ class SLtoB:
         try:
             self.b.get_element_states(locator, CONTAINS, "attached")
         except AssertionError:
-            raise ElementNotFound(
-                f"Element with locator '{locator.original_locator}' not found."
-            )
+            raise ElementNotFound(f"Element with locator '{locator.original_locator}' not found.")
         self.b.hover(locator)
 
     @keyword(tags=("IMPLEMENTED",))
@@ -1287,9 +1289,7 @@ class SLtoB:
         try:
             self.b.get_element_states(locator, CONTAINS, "attached")
         except AssertionError:
-            raise ElementNotFound(
-                f"Element with locator '{locator.original_locator}' not found."
-            )
+            raise ElementNotFound(f"Element with locator '{locator.original_locator}' not found.")
         self.b.hover(locator)
         self.b.mouse_button(MouseButtonAction.up)
 
@@ -1510,7 +1510,7 @@ class SLtoB:
         locator = self.get_button_locator(locator)
         for element in self.b.get_elements(locator):
             node = self.b.get_property(element, "nodeName")
-            if  node == "INPUT":
+            if node == "INPUT":
                 self.log_source(loglevel)
                 raise AssertionError(
                     message or f"Page should not have contained input '{locator.original_locator}'."
@@ -1518,7 +1518,8 @@ class SLtoB:
             elif node == "BUTTON":
                 self.log_source(loglevel)
                 raise AssertionError(
-                    message or f"Page should not have contained button '{locator.original_locator}'."
+                    message
+                    or f"Page should not have contained button '{locator.original_locator}'."
                 )
 
     @keyword(tags=("IMPLEMENTED",))
@@ -1535,7 +1536,8 @@ class SLtoB:
             ):
                 self.log_source(loglevel)
                 raise AssertionError(
-                    message or f"Page should not have contained checkbox '{locator.original_locator}'."
+                    message
+                    or f"Page should not have contained checkbox '{locator.original_locator}'."
                 )
 
     @keyword(tags=("IMPLEMENTED",))
@@ -1609,7 +1611,8 @@ class SLtoB:
             ):
                 self.log_source(loglevel)
                 raise AssertionError(
-                    message or f"Page should not have contained radio button '{locator.original_locator}'."
+                    message
+                    or f"Page should not have contained radio button '{locator.original_locator}'."
                 )
 
     @keyword(tags=("IMPLEMENTED",))
@@ -1639,7 +1642,8 @@ class SLtoB:
             ]:
                 self.log_source(loglevel)
                 raise AssertionError(
-                    message or f"Page should not have contained text field '{locator.original_locator}'."
+                    message
+                    or f"Page should not have contained text field '{locator.original_locator}'."
                 )
 
     @keyword(tags=("IMPLEMENTED",))
@@ -1649,9 +1653,7 @@ class SLtoB:
         try:
             self.b.get_element_states(locator, CONTAINS, "attached")
         except AssertionError:
-            raise ElementNotFound(
-                f"Element with locator '{locator.original_locator}' not found."
-            )
+            raise ElementNotFound(f"Element with locator '{locator.original_locator}' not found.")
         if isinstance(key, Keys):
             self.b.keyboard_key(KeyAction.press, key.value)
         else:
@@ -1693,7 +1695,9 @@ class SLtoB:
                 raise ElementNotFound(
                     f"Element with locator '{locator.original_locator}' not found."
                 )
-            self.b.click(locator)  # ToDo: i would consider this a bug. it should focus; not click...
+            self.b.click(
+                locator
+            )  # ToDo: i would consider this a bug. it should focus; not click...
         else:
             logger.info(f"Sending key(s) {keys} to page.")
         for parsed_key in parsed_keys:
@@ -1714,7 +1718,9 @@ class SLtoB:
                 self.b.keyboard_key(KeyAction.up, key.converted.value)
 
     def _is_noney(self, item):
-        return item is None or isinstance(item, WebElement) and item.original_locator.upper() == "NONE"
+        return (
+            item is None or isinstance(item, WebElement) and item.original_locator.upper() == "NONE"
+        )
 
     def _parse_keys(self, *keys):
         if not keys:
@@ -1725,7 +1731,7 @@ class SLtoB:
             separate_keys = self._convert_special_keys(separate_keys)
             list_keys.append(separate_keys)
         return list_keys
-    
+
     def _separate_key(self, key):
         one_key = ""
         list_keys = []
@@ -1738,7 +1744,7 @@ class SLtoB:
         if one_key:
             list_keys.append(one_key)
         return list_keys
-    
+
     def _convert_special_keys(self, keys):
         KeysRecord = namedtuple("KeysRecord", "converted, original special")
         converted_keys = []
@@ -1749,14 +1755,14 @@ class SLtoB:
             else:
                 converted_keys.append(KeysRecord(key, key, False))
         return converted_keys
-    
+
     def _parse_aliases(self, key):
         if key == "CTRL":
             return "CONTROL"
         if key == "ESC":
             return "ESCAPE"
         return key
-    
+
     def _selenium_keys_has_attr(self, key):
         return hasattr(Keys, key)
 
@@ -1830,7 +1836,9 @@ class SLtoB:
         try:
             self.b.get_property(locator, "nodeName", AO.validate, "value in ['IFRAME', 'FRAME']")
         except AssertionError:
-            raise NoSuchFrameException(f"Message: Unable to locate frame for element: {self.b.get_url()}")
+            raise NoSuchFrameException(
+                f"Message: Unable to locate frame for element: {self.b.get_url()}"
+            )
         self.b.set_selector_prefix(f"{locator} >>>", scope=Scope.Global)
 
     @keyword(tags=("IMPLEMENTED",))
@@ -1858,9 +1866,7 @@ class SLtoB:
         existing_values = [option["value"] for option in self.b.get_select_options(locator)]
         for value in values:
             if value not in existing_values:
-                raise NoSuchElementException(
-                    f"Message: Cannot locate option with value: {value}"
-                )
+                raise NoSuchElementException(f"Message: Cannot locate option with value: {value}")
         if self.b.get_property(locator, "multiple"):
             selection = self.b.get_selected_options(locator, SelectAttribute.value)
             values = [*values, *selection]
@@ -1923,20 +1929,14 @@ class SLtoB:
         try:
             self.b.get_element_states(locator, CONTAINS, "attached")
         except AssertionError:
-            raise ElementNotFound(
-                f"Element with locator '{locator.original_locator}' not found."
-            )
+            raise ElementNotFound(f"Element with locator '{locator.original_locator}' not found.")
         script = """(element, eventName) => {
                 var evt = document.createEvent("HTMLEvents");
                 evt.initEvent(eventName, true, true);
                 return !element.dispatchEvent(evt);
             }
         """
-        self.b.evaluate_javascript(
-            locator,
-            script,
-            arg=event
-        )
+        self.b.evaluate_javascript(locator, script, arg=event)
 
     @keyword(tags=("IMPLEMENTED",))
     def submit_form(self, locator: Optional[WebElement] = None):
@@ -1946,7 +1946,6 @@ class SLtoB:
         if node != "FORM":
             raise ElementNotFound(f"Form with locator '{locator.original_locator}' not found.")
         self.b.evaluate_javascript(locator, "form => form.submit()")
-
 
     @keyword(tags=("IMPLEMENTED",))
     def switch_browser(self, index_or_alias: str):
@@ -2211,9 +2210,7 @@ class SLtoB:
         error: Optional[str] = None,
     ):
         if "return" not in condition:
-            raise ValueError(
-                f"Condition '{condition}' did not have mandatory 'return'."
-            )
+            raise ValueError(f"Condition '{condition}' did not have mandatory 'return'.")
         self._wait_until(
             lambda: self.execute_javascript(condition) is True,
             f"Condition '{condition}' did not become true in <TIMEOUT>.",
@@ -2263,7 +2260,9 @@ class SLtoB:
         except AssertionError:
             raise ElementNotFound(f"Element with locator '{locator.original_locator}' not found.")
         self._wait_until(
-            lambda: self.b.get_element_states(locator, THEN, "bool((value & (enabled | editable)) == (enabled | editable))"),
+            lambda: self.b.get_element_states(
+                locator, THEN, "bool((value & (enabled | editable)) == (enabled | editable))"
+            ),
             f"Element '{locator.original_locator}' was not enabled in <TIMEOUT>.",
             timeout,
             error,
@@ -2282,7 +2281,6 @@ class SLtoB:
             timeout,
             error,
         )
-
 
     @keyword(tags=("IMPLEMENTED",))
     def wait_until_element_is_visible(
@@ -2309,7 +2307,7 @@ class SLtoB:
             lambda: expected in self.b.get_url(),
             f"Location did not contain '{expected}' in <TIMEOUT>.",
             timeout,
-            message
+            message,
         )
 
     @keyword(tags=("IMPLEMENTED",))
@@ -2323,7 +2321,7 @@ class SLtoB:
             lambda: location not in self.b.get_url(),
             f"Location did contain '{location}' in <TIMEOUT>.",
             timeout,
-            message
+            message,
         )
 
     @keyword(tags=("IMPLEMENTED",))
@@ -2337,9 +2335,8 @@ class SLtoB:
             lambda: expected == self.b.get_url(),
             f"Location did not become '{expected}' in <TIMEOUT>.",
             timeout,
-            message
+            message,
         )
-
 
     @keyword(tags=("IMPLEMENTED",))
     def wait_until_location_is_not(
@@ -2352,7 +2349,7 @@ class SLtoB:
             lambda: location != self.b.get_url(),
             f"Location is '{location}' in <TIMEOUT>.",
             timeout,
-            message
+            message,
         )
 
     @keyword(tags=("IMPLEMENTED",))
@@ -2446,14 +2443,29 @@ class SLtoB:
                 not_found = None
             time.sleep(0.2)
         raise AssertionError(not_found or error)
-    
+
     def _create_directory(self, path):
         target_dir = Path(path).parent
         if not target_dir.exists():
             target_dir.mkdir(parents=True)
 
-    def _get_screenshot_path(self, filename: str) -> str:
-        if self.screenshot_root_directory.upper() == EMBED:
-            return EMBED
-        directory = Path(self.screenshot_root_directory or self.log_dir)
-        return str(Path(directory, filename).resolve())
+    def _get_screenshot_path(self, filename: str, embed: bool) -> str:
+        if (
+            embed
+            or self.screenshot_root_directory
+            and self.screenshot_root_directory.upper() == EMBED
+        ):
+            directory = self.log_dir
+        else:
+            directory = self.screenshot_root_directory or self.log_dir
+        path = Path(directory, filename).resolve()
+        self._create_directory(path)
+        return str(path)
+
+    def _decide_embedded(self, filename: str) -> bool:
+        return (
+            filename in [DEFAULT_FILENAME_PAGE, DEFAULT_FILENAME_ELEMENT]
+            and self.screenshot_root_directory
+            and self.screenshot_root_directory.upper() == EMBED
+            or filename.upper() == EMBED
+        )

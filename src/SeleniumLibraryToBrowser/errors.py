@@ -22,14 +22,18 @@ class SeleniumLibraryException(Exception):
 class ElementNotFound(SeleniumLibraryException):
     pass
 
+
 class NoSuchElementException(Exception):
     pass
+
 
 class NoSuchFrameException(Exception):
     pass
 
+
 class InvalidArgumentException(Exception):
     pass
+
 
 class WindowNotFound(SeleniumLibraryException):
     pass
