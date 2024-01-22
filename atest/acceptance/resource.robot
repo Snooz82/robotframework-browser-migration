@@ -31,7 +31,7 @@ Open Browser To Start Page Without Testing Default Options
     Open Browser    ${FRONT PAGE}    ${BROWSER}    remote_url=${REMOTE_URL}
     ...    desired_capabilities=${DESIRED_CAPABILITIES}    alias=${alias}
     ${orig speed} =    Set Selenium Speed    ${SPEED}
-    ${orig timeout} =    Set Selenium Timeout    10 seconds
+    ${orig timeout} =    Set Selenium Timeout    5 seconds
     RETURN    ${orig speed}    5 seconds
 
 Cannot Be Executed In IE

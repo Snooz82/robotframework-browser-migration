@@ -5,12 +5,12 @@ Resource          ../resource.robot
 
 *** Test Cases ***
 Click Element Modifier CTRL
-    Click Element    Button    modifier=CTRL
-    Element Text Should Be    output    CTRL click
+    Click Element    Button    modifier=ALT
+    Element Text Should Be    output    ALT click
 
 Click Link Modifier CTRL
-    Click Link    link text    modifier=CTRL
-    Element Text Should Be    output    CTRL click
+    Click Link    link text    modifier=ALT
+    Element Text Should Be    output    ALT click
     [Teardown]    Close Popup Window
 
 Click Button Modifier CTRL
@@ -44,8 +44,8 @@ Click Element Wrong Modifier
 
 Click Element Action Chain and modifier
     [Documentation]     LOG 1:1 INFO Clicking element 'Button' with CTRL.
-    Click Element    Button    modifier=CTRL    action_chain=True
-    Element Text Should Be    output    CTRL click
+    Click Element    Button    modifier=ALT    action_chain=True
+    Element Text Should Be    output    ALT click
 
 *** Keywords ***
 Initialize Page

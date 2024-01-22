@@ -12,12 +12,12 @@ class Keys(Enum):
     TAB = "Tab"
     CLEAR = "Clear"
     RETURN = "Enter"
-    ENTER = "Enter"
+    ENTER = RETURN
     SHIFT = "Shift"
     LEFT_SHIFT = SHIFT
     CONTROL = "Control"
     CTRL = CONTROL
-    LEFT_CONTROL = CONTROL
+    LEFT_CONTROL = CTRL
     ALT = "Alt"
     LEFT_ALT = ALT
     PAUSE = "Pause"
@@ -69,5 +69,5 @@ class Keys(Enum):
     F11 = "F11"
     F12 = "F12"
     META = "Meta"
-    COMMAND = "Meta"
+    COMMAND = META
     ZENKAKU_HANKAKU = "ZenkakuHanaku"

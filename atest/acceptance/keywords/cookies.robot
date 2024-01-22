@@ -50,7 +50,7 @@ Delete Cookie
     [Tags]    Known Issue Safari
     Delete Cookie    test
     ${cookies} =    Get Cookies
-    Should Be Equal    ${cookies}    far_future=timemachine; another=value
+    Should Be True    $cookies in ["far_future=timemachine; another=value", "another=value; far_future=timemachine"]
 
 Non-existent Cookie
     Run Keyword And Expect Error

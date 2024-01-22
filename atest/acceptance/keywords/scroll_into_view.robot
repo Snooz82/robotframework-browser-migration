@@ -12,6 +12,7 @@ Verify Scroll Element Into View
     [Setup]    Go To Page "scroll/index.html"
     ${initial_postion}=    Get Vertical Position    css:#target
     Scroll Element Into View    css:#target
+    Sleep     200ms
     ${postion}=    Get Vertical Position    css:#target
     Should Be True    ${initial_postion} > ${postion}
     Element Should Contain    css:#result    ${TEXT}

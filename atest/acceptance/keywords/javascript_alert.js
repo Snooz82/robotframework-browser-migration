@@ -1,1 +1,1 @@
-alert(arguments[0]);
+return [arguments[0][2], arguments[0][1]];

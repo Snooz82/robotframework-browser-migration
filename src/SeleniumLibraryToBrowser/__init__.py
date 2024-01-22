@@ -1,35 +1,48 @@
-from collections import namedtuple
-import os
 import re
-import sys
 import time
-from datetime import timedelta
+from collections import namedtuple
+from datetime import datetime, timedelta, timezone
 from itertools import count
 from pathlib import Path
-from typing import Any, List, Optional, Union
+from typing import Any, Generator, List, Optional, Union
 
-from Browser import Browser
-from Browser.generated.playwright_pb2 import Request
-from Browser.base import LibraryComponent
-from Browser.assertion_engine import AssertionOperator as AO
-from Browser.utils.data_types import *
 from robot.api import SkipExecution, logger
 from robot.api.deco import library
 from robot.libraries.BuiltIn import BuiltIn, RobotNotRunningError
+from robot.libraries.DateTime import convert_date
 from robot.result.model import Message
 from robot.result.model import TestCase as ResultTestCase
 from robot.running import EXECUTION_CONTEXTS
 from robot.running.model import TestCase
-from robot.utils import DotDict, secs_to_timestr
+from robot.utils import DotDict, secs_to_timestr, timestr_to_secs
 from robotlibcore import DynamicCore, keyword
 
+from Browser import Browser, SupportedBrowsers
+from Browser.assertion_engine import AssertionOperator as AO
+from Browser.base import LibraryComponent
+from Browser.generated.playwright_pb2 import Request
+from Browser.utils.data_types import (
+    AutoClosingLevel,
+    BoundingBoxFields,
+    CookieType,
+    ElementState,
+    KeyAction,
+    KeyboardInputAction,
+    MouseButton,
+    MouseButtonAction,
+    Scope,
+    SelectAttribute,
+    SelectionType,
+)
 from SeleniumLibraryToBrowser.keys import Keys
 
 from .errors import (
+    CookieNotFound,
     ElementNotFound,
     InvalidArgumentException,
     NoSuchElementException,
     NoSuchFrameException,
+    WindowNotFound,
 )
 
 try:
@@ -54,6 +67,39 @@ EMBED = "EMBED"
 
 
 __version__ = "0.8.0"
+
+
+class CookieInformation:
+    def __init__(
+        self,
+        name,
+        value,
+        path=None,
+        domain=None,
+        secure=False,
+        httpOnly: bool = False,
+        expires: Optional[datetime] = None,
+        **extra,
+    ):
+        self.name: str = name
+        self.value: str = value
+        self.path: str = path
+        self.domain: str = domain
+        self.secure: str = secure
+        self.httpOnly: bool = httpOnly
+        self.expiry: datetime = (
+            expires.replace(tzinfo=timezone.utc).astimezone(tz=None).replace(tzinfo=None)
+            if expires is not None
+            else None
+        )
+        self.extra = extra
+
+    def __str__(self):
+        items = "name value path domain secure httpOnly expiry".split()
+        string = "\n".join(f"{item}={getattr(self, item)}" for item in items)
+        if self.extra:
+            string = f"{string}\nextra={self.extra}\n"
+        return string
 
 
 class WebElement(str):
@@ -293,6 +339,7 @@ class SLtoB:
         self._browser_indexes = {}
         self._browser_aliases = {}
         self._browser_index = count()
+        self._browser_page_catalog = {}
 
     @property
     def b(self) -> Browser:
@@ -300,7 +347,7 @@ class SLtoB:
             # BuiltIn().import_library(name="Browser", *self._browser_args)
             try:
                 self._browser = BuiltIn().get_library_instance("Browser")
-            except Exception as e:
+            except Exception:
                 self._browser = Browser(*self._browser_args)
             self._browser.set_strict_mode(False, Scope.Global)
             self._browser._auto_closing_level = AutoClosingLevel.MANUAL
@@ -409,17 +456,27 @@ class SLtoB:
     def type_converter(self, argument: Any) -> str:
         return type(argument).__name__.lower()
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def add_cookie(
         self,
         name: str,
         value: str,
-        path: Optional[str] = None,
+        path: str = "/",
         domain: Optional[str] = None,
-        secure: Optional[bool] = None,
-        expiry: Optional[str] = None,
+        secure: bool = False,
+        expiry: Union[None, int, str] = None,
     ):
-        ...
+        if domain is None:
+            domain = self.b.evaluate_javascript(None, "window.location.hostname")
+        if expiry is not None:
+            expiry = self._expiry(expiry)
+        self.b.add_cookie(name, value, domain=domain, path=path, secure=secure, expires=expiry)
+
+    def _expiry(self, expiry):
+        try:
+            return int(expiry)
+        except (ValueError, TypeError):
+            return int(convert_date(expiry, result_format="epoch"))
 
     @keyword
     def add_location_strategy(
@@ -454,7 +511,7 @@ class SLtoB:
     ) -> str:
         if not self.b.get_page_ids():
             logger.info("Cannot capture screenshot from element because no browser is open.")
-            return
+            return None
         try:
             self.b.get_element_states(locator, CONTAINS, "attached")
         except AssertionError:
@@ -472,7 +529,7 @@ class SLtoB:
     def capture_page_screenshot(self, filename: str = DEFAULT_FILENAME_PAGE) -> str:
         if not self.b.get_page_ids():
             logger.info("Cannot capture screenshot from element because no browser is open.")
-            return
+            return None
         embedding = self._decide_embedded(filename)
         screenshot_file = (
             EMBED
@@ -697,9 +754,14 @@ class SLtoB:
     def delete_all_cookies(self):
         self.b.delete_all_cookies()
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def delete_cookie(self, name):
-        ...
+        cookies = self.b.get_cookies()
+        for cookie in cookies:
+            if cookie.name == name:
+                self.b.add_cookie(
+                    cookie.name, cookie.value, expires=0, domain=cookie.domain, path=cookie.path
+                )
 
     @keyword(tags=("IMPLEMENTED",))
     def double_click_element(self, locator: WebElement):
@@ -866,10 +928,19 @@ class SLtoB:
     def execute_async_javascript(self, *code: str):
         ...
 
-    @keyword(tags=("IMPLEMENTED",))
+    @keyword(tags=("IMPLEMENTED", "HAS LIMITATIONS"))
     def execute_javascript(self, *code: Any):
+        """`Execute Javascript` has the limitation, that only the first argument (``argument[0]``) can be a webelement."""
         javascript, args = self._analyse_js(code)
         logger.debug(javascript)
+        web_elem = None
+        if args and isinstance(args[0], WebElement):
+            elem = args.pop(0)
+            return self.b.evaluate_javascript(
+                elem,
+                "(elem, args) => {\nlet arguments = [elem, ...args];\n" f"{javascript}" "}",
+                arg=args,
+            )
         return self.b.evaluate_javascript(
             None, f"(arguments) => {{{javascript}}}", arg=args or None
         )
@@ -916,14 +987,24 @@ class SLtoB:
         return list(self._browser_indexes.keys())
 
     @keyword(tags=("IMPLEMENTED",))
-    def get_cookie(self, name: str):
-        return DotDict(self.b.get_cookie(name, CookieType.dict))
+    def get_cookie(self, name: str) -> CookieInformation:
+        try:
+            raw_cookie = self.b.get_cookie(name, CookieType.dict)
+        except ValueError as e:
+            raise CookieNotFound(f"Cookie with name '{name}' not found.") from e
+        cookie = CookieInformation(**raw_cookie)
+        return cookie
 
     @keyword(tags=("IMPLEMENTED",))
     def get_cookies(self, as_dict: bool = False):
         if as_dict:
-            return DotDict(self.b.get_cookies(CookieType.dictionary))
-        return self.b.get_cookies(CookieType.str)
+            cookies = {cookie.name: cookie.value for cookie in self.b.get_cookies()}
+            return DotDict(cookies)
+        else:
+            pairs = []
+            for cookie in self.b.get_cookies():
+                pairs.append(f"{cookie['name']}={cookie['value']}")
+            return "; ".join(pairs)
 
     @keyword(tags=("IMPLEMENTED",))
     def get_element_attribute(self, locator: WebElement, attribute: str):
@@ -973,9 +1054,7 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def get_locations(self, browser: str = "CURRENT"):
-        current_page = self.b.get_page_ids(
-            page=SelectionType.CURRENT, context=SelectionType.CURRENT, browser=SelectionType.CURRENT
-        )[0]
+        current_page = self._get_current_page_id()
         try:
             return list(self._generate_locations(browser))
         finally:
@@ -988,20 +1067,53 @@ class SLtoB:
 
     def _get_page_ids(self, browser: str):
         if browser.upper() == "CURRENT":
-            return self.b.get_page_ids(browser=SelectionType.CURRENT)
+            return self._get_current_page_ids()
         if browser.upper() == "ALL":
-            return self.b.get_page_ids()
+            return list(self._get_all_page_ids())
 
+        id = self._get_pw_browser_id(browser)
+        org_browser = self.b.switch_browser(id)
+        try:
+            return self._get_current_page_ids()
+        finally:
+            self.b.switch_browser(org_browser)
+
+    def _get_current_page_ids(self) -> List[str]:
+        pw_page_ids = self.b.get_page_ids(browser=SelectionType.CURRENT)
+        current_browser_id = self._get_current_browser_id()
+        for pw_page_id in pw_page_ids:
+            if pw_page_id not in self._browser_page_catalog[current_browser_id]:
+                self._browser_page_catalog[current_browser_id].append(pw_page_id)
+        for page_id in self._browser_page_catalog[current_browser_id]:
+            if page_id not in pw_page_ids:
+                self._browser_page_catalog[current_browser_id].remove(page_id)
+        return self._browser_page_catalog[current_browser_id]
+
+    def _get_all_page_ids(self) -> Generator[str, None, None]:
+        catalog = self.b.get_browser_catalog()
+        page_ids = []
+        for browser in catalog:
+            for context in browser["contexts"]:
+                for page in context["pages"]:
+                    page_ids.append(page["id"])
+                    if page["id"] not in self._browser_page_catalog[browser["id"]]:
+                        self._browser_page_catalog[browser["id"]].append(page["id"])
+            for page_id in self._browser_page_catalog[browser["id"]]:
+                if page_id not in page_ids:
+                    self._browser_page_catalog[browser["id"]].remove(page_id)
+        for browser in self._browser_page_catalog:
+            for page in self._browser_page_catalog[browser]:
+                yield page
+
+    def _get_pw_browser_id(self, browser):
+        if isinstance(browser, str) and browser.upper() == "CURRENT":
+            return self._get_current_browser_id()
         id = self._browser_indexes.get(browser, None) or self._browser_indexes.get(
             self._browser_aliases.get(browser), None
         )
         if id is None:
             raise ValueError(f"Browser '{browser}' not found")
-        org_browser = self.b.switch_browser(id)
-        try:
-            return self.b.get_page_ids(browser=SelectionType.CURRENT)
-        finally:
-            self.b.switch_browser(org_browser)
+        return id
 
     @keyword(tags=("IMPLEMENTED",))
     def get_selected_list_label(self, locator: WebElement):
@@ -1050,17 +1162,57 @@ class SLtoB:
     @keyword(tags=("IMPLEMENTED",))
     def get_table_cell(
         self,
-        locator: Optional[WebElement],
+        locator: WebElement,
         row: int,
         column: int,
         loglevel: str = "TRACE",
     ):
+        if row == 0 or column == 0:
+            raise ValueError(
+                "Both row and column must be non-zero, " f"got row {row} and column {column}."
+            )
         try:
-            element = self.b.get_table_cell_element(locator, column, row)
-            return self.b.get_text(element)
+            return self._get_cell_text(locator=locator, row=row, column=column)
         except Exception as e:
             self.log_source(loglevel)
             raise e
+
+    def _get_cell_text(self, locator: WebElement, row, column):
+        rows = self._get_rows(locator, row)
+        if len(rows) < abs(row):
+            raise AssertionError(
+                f"Table '{locator.original_locator}' should have had at least {abs(row)} "
+                f"rows but had only {len(rows)}."
+            )
+        index = row - 1 if row > 0 else row
+        if column < 0:
+            column_cnt = self.b.get_element_count(f"{rows[index]} >> xpath=./th|./td") + column
+            if column_cnt < 0:
+                raise AssertionError(
+                    f"Table '{locator.original_locator}' should have had at least {abs(column)} "
+                    f"columns but had only {column_cnt}."
+                )
+        else:
+            column_cnt = column - 1
+        cell_cnt = self.b.get_element_count(f"{rows[index]} >> xpath=./th|./td")
+        if cell_cnt < abs(column):
+            raise AssertionError(
+                f"Table '{locator.original_locator}' row {row} should have had at "
+                f"least {abs(column)} columns but had only {cell_cnt}."
+            )
+        txt = self.b.get_text(f"{rows[index]} >> xpath=./th|./td >> nth={column_cnt}")
+        return txt
+
+    def _get_rows(self, locator, count):
+        cnt = self.b.get_element_count(f"{locator} >> thead > tr")
+        rows = [f"{locator} >> thead > tr >> nth={index}" for index in range(cnt)]
+        if count < 0 or len(rows) < count:
+            cnt = self.b.get_element_count(f"{locator} >> tbody > tr")
+            rows.extend([f"{locator} >> tbody > tr >> nth={index}" for index in range(cnt)])
+        if count < 0 or len(rows) < count:
+            cnt = self.b.get_element_count(f"{locator} >> tfoot > tr")
+            rows.extend([f"{locator} >> tfoot > tr >> nth={index}" for index in range(cnt)])
+        return rows
 
     @keyword(tags=("IMPLEMENTED",))
     def get_text(self, locator: WebElement):
@@ -1102,21 +1254,39 @@ class SLtoB:
     def get_webelements(self, locator: WebElement):
         return self.b.get_elements(locator)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def get_window_handles(self, browser: str = "CURRENT"):
-        ...
+        return self._get_page_ids(browser)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def get_window_identifiers(self, browser: str = "CURRENT"):
-        ...
+        current_page = self._get_current_page_id()
+        try:
+            return list(self._generate_window_ids(browser))
+        finally:
+            self.b.switch_page(current_page, context=SelectionType.ALL, browser=SelectionType.ALL)
 
-    @keyword
+    def _generate_window_ids(self, browser: str):
+        for page_id in self._get_page_ids(browser):
+            self.b.switch_page(page_id, context=SelectionType.ALL, browser=SelectionType.ALL)
+            yield self.b.evaluate_javascript(None, "() => String(window.id)") or "undefined"
+
+    @keyword(tags=("IMPLEMENTED",))
     def get_window_names(self, browser: str = "CURRENT"):
-        ...
+        current_page = self._get_current_page_id()
+        try:
+            return list(self._generate_window_names(browser))
+        finally:
+            self.b.switch_page(current_page, context=SelectionType.ALL, browser=SelectionType.ALL)
 
-    @keyword
+    def _generate_window_names(self, browser: str):
+        for page_id in self._get_page_ids(browser):
+            self.b.switch_page(page_id, context=SelectionType.ALL, browser=SelectionType.ALL)
+            yield self.b.evaluate_javascript(None, "() => String(window.name)") or "undefined"
+
+    @keyword(tags=("IMPLEMENTED",))
     def get_window_position(self):
-        ...
+        return tuple(self.b.evaluate_javascript(None, "() => [window.screenX, window.screenY]"))
 
     @keyword(tags=("IMPLEMENTED",))
     def get_window_size(self, inner: bool = False):
@@ -1127,11 +1297,9 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def get_window_titles(self, browser: str = "CURRENT"):
-        current_page = self.b.get_page_ids(
-            page=SelectionType.CURRENT, context=SelectionType.CURRENT, browser=SelectionType.CURRENT
-        )[0]
+        current_page = self._get_current_page_id()
         try:
-            return list(self._generate_locations(browser))
+            return list(self._generate_titles(browser))
         finally:
             self.b.switch_page(current_page, context=SelectionType.ALL, browser=SelectionType.ALL)
 
@@ -1139,6 +1307,14 @@ class SLtoB:
         for page_id in self._get_page_ids(browser):
             self.b.switch_page(page_id, context=SelectionType.ALL, browser=SelectionType.ALL)
             yield self.b.get_title()
+
+    def _get_current_page_id(self):
+        return self.b.get_page_ids(
+            page=SelectionType.CURRENT, context=SelectionType.CURRENT, browser=SelectionType.CURRENT
+        )[0]
+
+    def _get_current_browser_id(self):
+        return self.b.get_browser_ids(browser=SelectionType.CURRENT)[0]
 
     @keyword(tags=("IMPLEMENTED",))
     def go_back(self):
@@ -1185,7 +1361,7 @@ class SLtoB:
     def list_selection_should_be(self, locator: WebElement, *expected: str):
         try:
             self.b.get_element_states(locator, CONTAINS, "attached")
-        except AssertionError as e:
+        except AssertionError:
             raise ElementNotFound("Page should have contained list 'nonexisting' but did not.")
         selected_labels = self.b.get_selected_options(locator, SelectAttribute.label)
         selected_values = self.b.get_selected_options(locator, SelectAttribute.value)
@@ -1232,7 +1408,7 @@ class SLtoB:
     @keyword(tags=("IMPLEMENTED",))
     def log_source(self, loglevel: str = "INFO"):
         if loglevel.upper() == "NONE":
-            return
+            return None
         source = self.b.get_page_source()
         logger.write(source, level=loglevel)
         return source
@@ -1307,11 +1483,12 @@ class SLtoB:
         executable_path: Optional[str] = None,
     ):
         browser_enum, headless = BROWSERS.get(browser, (SupportedBrowsers.chromium, False))
-        ids = self.b.new_persistent_context(
+        browser_id, context_id, page_info = self.b.new_persistent_context(
             url=url, browser=browser_enum, args=options, headless=headless, viewport=None
         )
         identifier = str(next(self._browser_index))
-        self._browser_indexes[identifier] = ids[0]
+        self._browser_indexes[identifier] = browser_id
+        self._browser_page_catalog[browser_id] = [page_info["page_id"]]
         if alias:
             self._browser_aliases[alias] = identifier
         return identifier
@@ -1708,7 +1885,7 @@ class SLtoB:
                     for char in key.converted:
                         try:
                             self.b.keyboard_key(KeyAction.press, char)
-                        except Exception as e:
+                        except Exception:
                             self.b.keyboard_input(KeyboardInputAction.type, char)
             self._special_key_up(None, parsed_key)
 
@@ -1920,8 +2097,9 @@ class SLtoB:
     def set_window_position(self, x: int, y: int):
         ...
 
-    @keyword(tags=("IMPLEMENTED",))
+    @keyword(tags=("IMPLEMENTED", "HAS LIMITATIONS"))
     def set_window_size(self, width: int, height: int, inner: bool = False):
+        """It does not actually set the size of the browser window, but the size of the viewport."""
         self.b.set_viewport_size(width, height)
 
     @keyword(tags=("IMPLEMENTED",))
@@ -1948,7 +2126,7 @@ class SLtoB:
         self.b.evaluate_javascript(locator, "form => form.submit()")
 
     @keyword(tags=("IMPLEMENTED",))
-    def switch_browser(self, index_or_alias: str):
+    def switch_browser(self, index_or_alias: Union[int, str]):
         id = self._browser_indexes.get(index_or_alias, None) or self._browser_indexes.get(
             self._browser_aliases.get(index_or_alias), None
         )
@@ -1956,72 +2134,181 @@ class SLtoB:
             raise ValueError(f"Browser '{index_or_alias}' not found")
         return self.b.switch_browser(id)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def switch_window(
         self,
         locator: Union[list, str] = "MAIN",
         timeout: Optional[str] = None,
         browser: str = "CURRENT",
     ):
-        ...
+        log_level = BuiltIn().set_log_level("ERROR")
+        try:
+            epoch = time.time()
+            timeout = epoch if not timeout else timestr_to_secs(timeout) + epoch
+            current_page_id = self._get_current_page_id()
+            while True:
+                try:
+                    if isinstance(locator, str):
+                        if locator.upper() == "CURRENT":
+                            return current_page_id
+                        if locator.upper() == "NEW":
+                            id = self._get_pw_browser_id(browser)
+                            if id != self._get_current_browser_id:
+                                self.b.switch_browser(id)
+                            self.b.switch_page("NEW")
+                            return current_page_id
+                        locator_match = re.match(
+                            r"(?P<strategy>name|title|url|default)[:=](?P<locator>.*)", locator
+                        )
+                        if locator_match:
+                            locator = locator_match.group("locator")
+                            strategy = locator_match.group("strategy")
+                        else:
+                            strategy = "default"
+                        for index, page_info in enumerate(
+                            self._generate_window_information(browser)
+                        ):
+                            if strategy == "default" and page_info["handle"] == locator:
+                                return current_page_id
+                            if strategy in ["default", "name"] and page_info["name"] == locator:
+                                return current_page_id
+                            if strategy in ["default", "title"] and page_info["title"] == locator:
+                                return current_page_id
+                            if strategy in ["default", "url"] and page_info["url"] == locator:
+                                return current_page_id
+                            if strategy == "default" and locator.upper() == "MAIN" and index == 0:
+                                return current_page_id
+                        self.b.switch_page(current_page_id)
+                    else:
+                        for page_id in self._get_page_ids(browser):
+                            if page_id not in locator:
+                                self.b.switch_page(page_id, SelectionType.ALL, SelectionType.ALL)
+                                return current_page_id
+                    raise WindowNotFound(
+                        f"No window matching handle, name, title or URL '{locator}' found."
+                    )
+                except WindowNotFound as e:
+                    if time.time() > timeout:
+                        raise e
+                    time.sleep(0.1)
+        finally:
+            BuiltIn().set_log_level(log_level)
 
-    @keyword
+    def _generate_window_information(self, browser: str):
+        for page_id in self._get_page_ids(browser):
+            self.b.switch_page(page_id, context=SelectionType.ALL, browser=SelectionType.ALL)
+            name = self.b.evaluate_javascript(None, "() => String(window.name)")
+            title = self.b.get_title()
+            url = self.b.get_url()
+            handle = page_id
+            yield {"handle": handle, "name": name, "title": title, "url": url}
+
+    def _index_to_position(self, index):
+        if index == 0:
+            raise ValueError("Row and column indexes must be non-zero.")
+        if index > 0:
+            return str(index)
+        if index == -1:
+            return "position()=last()"
+        return f"position()=last()-{abs(index) - 1}"
+
+    @keyword(tags=("IMPLEMENTED",))
     def table_cell_should_contain(
         self,
-        locator: Optional[WebElement],
+        locator: WebElement,
         row: int,
         column: int,
         expected: str,
         loglevel: str = "TRACE",
     ):
-        ...
+        tc_text = self.get_table_cell(locator=locator, row=row, column=column, loglevel=loglevel)
+        if expected not in tc_text:
+            self.log_source(loglevel)
+            raise AssertionError(
+                f"Table '{locator.original_locator}' cell on row {row} and column {column} "
+                f"should have contained text '{expected}' but it had '{tc_text}'."
+            )
+        logger.info(f"Table cell contains '{tc_text}'.")
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def table_column_should_contain(
         self,
-        locator: Optional[WebElement],
+        locator: WebElement,
         column: int,
         expected: str,
         loglevel: str = "TRACE",
     ):
-        ...
+        position = self._index_to_position(column)
+        if (
+            self.b.get_element_count(
+                f"{locator} >> //tr//*[self::td or self::th][{position}] >> text={expected}"
+            )
+            == 0
+        ):
+            self.log_source(loglevel)
+            raise AssertionError(
+                f"Table '{locator.original_locator}' column {column} did not contain text '{expected}'."
+            )
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def table_footer_should_contain(
         self,
-        locator: Optional[WebElement],
+        locator: WebElement,
         expected: str,
         loglevel: str = "TRACE",
     ):
-        ...
+        if self.b.get_element_count(f"{locator} >> //tfoot//td >> text={expected}") == 0:
+            self.log_source(loglevel)
+            raise AssertionError(
+                f"Table '{locator.original_locator}' footer did not contain text '{expected}'."
+            )
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def table_header_should_contain(
         self,
-        locator: Optional[WebElement],
+        locator: WebElement,
         expected: str,
         loglevel: str = "TRACE",
     ):
-        ...
+        for i in range(self.b.get_element_count(f"{locator} >> //th")):
+            if expected in self.b.get_text(f"{locator} >> //th >> nth={i}"):
+                return
+        self.log_source(loglevel)
+        raise AssertionError(
+            f"Table '{locator.original_locator}' header did not contain text '{expected}'."
+        )
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def table_row_should_contain(
         self,
-        locator: Optional[WebElement],
+        locator: WebElement,
         row: int,
         expected: str,
         loglevel: str = "TRACE",
     ):
-        ...
+        position = self._index_to_position(row)
+        for i in range(self.b.get_element_count(f"{locator} >> //tr[{position}]")):
+            if expected in self.b.get_text(f"{locator} >> //tr[{position}] >> nth={i}").replace(
+                "\t", " "
+            ):
+                return
+        self.log_source(loglevel)
+        raise AssertionError(
+            f"Table '{locator.original_locator}' row {row} did not contain text '{expected}'."
+        )
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def table_should_contain(
         self,
-        locator: Optional[WebElement],
+        locator: WebElement,
         expected: str,
         loglevel: str = "TRACE",
     ):
-        ...
+        if self.b.get_element_count(f"{locator} >> text={expected}") == 0:
+            self.log_source(loglevel)
+            raise AssertionError(
+                f"Table '{locator.original_locator}' did not contain text '{expected}'."
+            )
 
     @keyword(tags=("IMPLEMENTED",))
     def textarea_should_contain(
@@ -2221,7 +2508,7 @@ class SLtoB:
     @keyword(tags=("IMPLEMENTED",))
     def wait_until_element_contains(
         self,
-        locator: Optional[WebElement],
+        locator: WebElement,
         text: str,
         timeout: Optional[timedelta] = None,
         error: Optional[str] = None,
@@ -2236,7 +2523,7 @@ class SLtoB:
     @keyword(tags=("IMPLEMENTED",))
     def wait_until_element_does_not_contain(
         self,
-        locator: Optional[WebElement],
+        locator: WebElement,
         text: str,
         timeout: Optional[timedelta] = None,
         error: Optional[str] = None,
@@ -2251,7 +2538,7 @@ class SLtoB:
     @keyword(tags=("IMPLEMENTED",))
     def wait_until_element_is_enabled(
         self,
-        locator: Optional[WebElement],
+        locator: WebElement,
         timeout: Optional[timedelta] = None,
         error: Optional[str] = None,
     ):
@@ -2271,7 +2558,7 @@ class SLtoB:
     @keyword(tags=("IMPLEMENTED",))
     def wait_until_element_is_not_visible(
         self,
-        locator: Optional[WebElement],
+        locator: WebElement,
         timeout: Optional[timedelta] = None,
         error: Optional[str] = None,
     ):
@@ -2285,7 +2572,7 @@ class SLtoB:
     @keyword(tags=("IMPLEMENTED",))
     def wait_until_element_is_visible(
         self,
-        locator: Optional[WebElement],
+        locator: WebElement,
         timeout: Optional[timedelta] = None,
         error: Optional[str] = None,
     ):
@@ -2404,7 +2691,7 @@ class SLtoB:
     @keyword(tags=("IMPLEMENTED",))
     def wait_until_page_does_not_contain_element(
         self,
-        locator: Optional[WebElement],
+        locator: WebElement,
         timeout: Optional[timedelta] = None,
         error: Optional[str] = None,
         limit: Optional[int] = None,

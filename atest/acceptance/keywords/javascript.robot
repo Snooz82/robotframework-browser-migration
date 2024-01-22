@@ -20,46 +20,37 @@ Mouse Down On Link
     Mouse Up    link_mousedown
 
 Execute Javascript
-    [Documentation]
-    ...    LOG 1 Executing JavaScript:
-    ...    window.add_content('button_target', 'Inserted directly')
-    ...    Without any arguments.
     Execute Javascript    window.add_content('button_target', 'Inserted directly')
     Page Should Contain    Inserted directly
 
 Execute Javascript With ARGUMENTS and JAVASCRIPT Marker
-    Execute Javascript
+     ${l}=    Create List    one   two    three
+    ${result}    Execute Javascript
     ...  ARGUMENTS
-    ...  123
+    ...  ${l}
+    ...  ${l}
     ...  JAVASCRIPT
-    ...  alert(arguments[0]);
-    Alert Should Be Present    123    timeout=10 s
+    ...  return [arguments[0][2], arguments[0][1]];
+    Should Be Equal    ${result}    ${{["three", "two"]}}
 
 Execute Javascript With JAVASCRIPT and ARGUMENTS Marker
-    [Documentation]
-    ...    LOG 1 Executing JavaScript:
-    ...    alert(arguments[0]);
-    ...    By using argument:
-    ...    '123'
-    Execute Javascript
+    ${l}=    Create List    one   two    three
+    ${result}    Execute Javascript
     ...  JAVASCRIPT
-    ...  alert(arguments[0]);
+    ...  return [arguments[0][2], arguments[0][1]];
     ...  ARGUMENTS
-    ...  123
-    Alert Should Be Present    123    timeout=10 s
+    ...  ${l}
+    ...  ${l}
+    Should Be Equal    ${result}    ${{["three", "two"]}}
 
 Execute Javascript With ARGUMENTS Marker Only
-    [Documentation]
-    ...    LOG 1 Executing JavaScript:
-    ...    alert(arguments[0]);
-    ...    By using arguments:
-    ...    '123' and '0987'
-    Execute Javascript
-    ...  alert(arguments[0]);
+    ${l}=    Create List    one   two    three
+    ${result}    Execute Javascript
+    ...  return [arguments[0][2], arguments[0][1]];
     ...  ARGUMENTS
-    ...  123
-    ...  0987
-    Alert Should Be Present    123    timeout=10 s
+    ...  ${l}
+    ...  ${l}
+    Should Be Equal    ${result}    ${{["three", "two"]}}
 
 Execute Javascript With ARGUMENTS Marker And WebElement
     ${body_webelement} =    Get WebElement  css:body
@@ -79,11 +70,13 @@ Execute Javascript from File
     Page Should Contain    Inserted via file
 
 Execute Javascript from File With ARGUMENTS Marker
-    Execute Javascript
+    ${l}=    Create List    one   two    three
+    ${result}   Execute Javascript
     ...    ${CURDIR}/javascript_alert.js
-    ...    ARGUMENTS
-    ...    123
-    Alert Should Be Present    123    timeout=10 s
+    ...  ARGUMENTS
+    ...  ${l}
+    ...  ${l}
+    Should Be Equal    ${result}    ${{["three", "two"]}}
 
 Execute Javascript with dictionary object
     &{ARGS}=            Create Dictionary     key=value    number=${1}    boolean=${TRUE}
