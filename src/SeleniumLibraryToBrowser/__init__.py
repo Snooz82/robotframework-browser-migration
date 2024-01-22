@@ -1,10 +1,10 @@
 import re
 import time
-from collections import namedtuple
+from contextlib import suppress
 from datetime import datetime, timedelta, timezone
 from itertools import count
 from pathlib import Path
-from typing import Any, Generator, List, Optional, Union
+from typing import Any, ClassVar, Generator, List, NamedTuple, Optional, Union
 
 from robot.api import SkipExecution, logger
 from robot.api.deco import library
@@ -164,7 +164,7 @@ class WebElement(str):
     #         tag = "textarea"
     #     return tag, constraints
 
-    LOCATORS = {
+    LOCATORS: ClassVar = {
         "id": "id={loc}",
         "name": "css=[name={loc}]",
         "identifier": "css=[id={loc}], [name={loc}]",
@@ -312,7 +312,7 @@ class SeleniumLibraryToBrowser(DynamicCore):
         try:
             name = getattr(self.sl, name).robot_name or name
             return self.sl.get_keyword_documentation(name)
-        except:
+        except Exception:
             pass
         return super().get_keyword_documentation(name)
 
@@ -626,10 +626,8 @@ class SLtoB:
             ) from e
         finally:
             for mod in reversed(modifiers):
-                try:
+                with suppress(Exception):
                     self.b.keyboard_key(KeyAction.up, Keys[mod.upper()].value)
-                except:
-                    pass
 
     @keyword(tags=("IMPLEMENTED",))
     def click_element_at_coordinates(self, locator: WebElement, xoffset: int, yoffset: int):
@@ -933,12 +931,11 @@ class SLtoB:
         """`Execute Javascript` has the limitation, that only the first argument (``argument[0]``) can be a webelement."""
         javascript, args = self._analyse_js(code)
         logger.debug(javascript)
-        web_elem = None
         if args and isinstance(args[0], WebElement):
             elem = args.pop(0)
             return self.b.evaluate_javascript(
                 elem,
-                "(elem, args) => {\nlet arguments = [elem, ...args];\n" f"{javascript}" "}",
+                f"(elem, args) => {{\nlet arguments = [elem, ...args];\n{javascript}}}",
                 arg=args,
             )
         return self.b.evaluate_javascript(
@@ -992,19 +989,17 @@ class SLtoB:
             raw_cookie = self.b.get_cookie(name, CookieType.dict)
         except ValueError as e:
             raise CookieNotFound(f"Cookie with name '{name}' not found.") from e
-        cookie = CookieInformation(**raw_cookie)
-        return cookie
+        return CookieInformation(**raw_cookie)
 
     @keyword(tags=("IMPLEMENTED",))
     def get_cookies(self, as_dict: bool = False):
         if as_dict:
             cookies = {cookie.name: cookie.value for cookie in self.b.get_cookies()}
             return DotDict(cookies)
-        else:
-            pairs = []
-            for cookie in self.b.get_cookies():
-                pairs.append(f"{cookie['name']}={cookie['value']}")
-            return "; ".join(pairs)
+        pairs = []
+        for cookie in self.b.get_cookies():
+            pairs.append(f"{cookie['name']}={cookie['value']}")
+        return "; ".join(pairs)
 
     @keyword(tags=("IMPLEMENTED",))
     def get_element_attribute(self, locator: WebElement, attribute: str):
@@ -1169,7 +1164,7 @@ class SLtoB:
     ):
         if row == 0 or column == 0:
             raise ValueError(
-                "Both row and column must be non-zero, " f"got row {row} and column {column}."
+                f"Both row and column must be non-zero, got row {row} and column {column}."
             )
         try:
             return self._get_cell_text(locator=locator, row=row, column=column)
@@ -1200,8 +1195,7 @@ class SLtoB:
                 f"Table '{locator.original_locator}' row {row} should have had at "
                 f"least {abs(column)} columns but had only {cell_cnt}."
             )
-        txt = self.b.get_text(f"{rows[index]} >> xpath=./th|./td >> nth={column_cnt}")
-        return txt
+        return self.b.get_text(f"{rows[index]} >> xpath=./th|./td >> nth={column_cnt}")
 
     def _get_rows(self, locator, count):
         cnt = self.b.get_element_count(f"{locator} >> thead > tr")
@@ -1339,10 +1333,12 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def input_text(self, locator: WebElement, text: str, clear: bool = True):
-        if self.b.get_property(locator, "nodeName") == "INPUT":
-            if self.b.get_attribute(locator, "type").lower() == "file":
-                self.choose_file(locator, text)
-                return
+        if (
+            self.b.get_property(locator, "nodeName") == "INPUT"
+            and self.b.get_attribute(locator, "type").lower() == "file"
+        ):
+            self.choose_file(locator, text)
+            return
         self.b.press_keys(locator, "End")
         try:
             self.b.type_text(locator, text, clear=clear)
@@ -1692,7 +1688,7 @@ class SLtoB:
                 raise AssertionError(
                     message or f"Page should not have contained input '{locator.original_locator}'."
                 )
-            elif node == "BUTTON":
+            if node == "BUTTON":
                 self.log_source(loglevel)
                 raise AssertionError(
                     message
@@ -1923,14 +1919,14 @@ class SLtoB:
         return list_keys
 
     def _convert_special_keys(self, keys):
-        KeysRecord = namedtuple("KeysRecord", "converted, original special")
+        KeysRecord = NamedTuple("KeysRecord", "converted, original special")
         converted_keys = []
         for key in keys:
-            key = self._parse_aliases(key)
-            if self._selenium_keys_has_attr(key):
-                converted_keys.append(KeysRecord(getattr(Keys, key), key, True))
+            ky = self._parse_aliases(key)
+            if self._selenium_keys_has_attr(ky):
+                converted_keys.append(KeysRecord(getattr(Keys, ky), ky, True))
             else:
-                converted_keys.append(KeysRecord(key, key, False))
+                converted_keys.append(KeysRecord(ky, ky, False))
         return converted_keys
 
     def _parse_aliases(self, key):
@@ -2662,10 +2658,16 @@ class SLtoB:
         limit: Optional[int] = None,
     ):
         if limit is None:
-            func = lambda: self.b.get_element_count(locator) > 0
+
+            def func():
+                return self.b.get_element_count(locator) > 0
+
             msg = f"Element '{locator.original_locator}' did not appear in <TIMEOUT>."
         else:
-            func = lambda: self.b.get_element_count(locator) == limit
+
+            def func():
+                return self.b.get_element_count(locator) == limit
+
             msg = f'Page should have contained "{limit}" {locator.original_locator} element(s) within <TIMEOUT>.'
         self._wait_until(
             func,
@@ -2697,10 +2699,16 @@ class SLtoB:
         limit: Optional[int] = None,
     ):
         if limit is None:
-            func = lambda: self.b.get_element_count(locator) == 0
+
+            def func():
+                return self.b.get_element_count(locator) == 0
+
             msg = f"Element '{locator.original_locator}' did not disappear in <TIMEOUT>."
         else:
-            func = lambda: self.b.get_element_count(locator) != limit
+
+            def func():
+                return self.b.get_element_count(locator) != limit
+
             msg = f'Page should have not contained "{limit}" {locator.original_locator} element(s) within <TIMEOUT>.'
         self._wait_until(
             func,
@@ -2709,7 +2717,7 @@ class SLtoB:
             error,
         )
 
-    def _wait_until(self, condition, error, timeout: timedelta = None, custom_error=None):
+    def _wait_until(self, condition, error, timeout: Optional[timedelta] = None, custom_error=None):
         timeout = self.b.get_timeout(timeout) / 1000
         if custom_error is None:
             error = error.replace("<TIMEOUT>", secs_to_timestr(timeout))
