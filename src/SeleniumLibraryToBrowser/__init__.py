@@ -1,10 +1,11 @@
 import re
 import time
+from collections import namedtuple
 from contextlib import suppress
 from datetime import datetime, timedelta, timezone
 from itertools import count
 from pathlib import Path
-from typing import Any, ClassVar, Generator, List, NamedTuple, Optional, Union
+from typing import Any, ClassVar, Dict, Generator, List, Optional, Union
 
 from robot.api import SkipExecution, logger
 from robot.api.deco import library
@@ -164,7 +165,7 @@ class WebElement(str):
     #         tag = "textarea"
     #     return tag, constraints
 
-    LOCATORS: ClassVar = {
+    LOCATORS: ClassVar[Dict[str, str]] = {
         "id": "id={loc}",
         "name": "css=[name={loc}]",
         "identifier": "css=[id={loc}], [name={loc}]",
@@ -1859,7 +1860,7 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def press_keys(self, locator: Optional[WebElement] = None, *keys: str):
-        parsed_keys = self._parse_keys(*keys)
+        parsed_keys = self._parse_keys(keys)
         if not self._is_noney(locator):
             logger.info(f"Sending key(s) {keys} to {locator.original_locator} element.")
             try:
@@ -1895,7 +1896,7 @@ class SLtoB:
             item is None or isinstance(item, WebElement) and item.original_locator.upper() == "NONE"
         )
 
-    def _parse_keys(self, *keys):
+    def _parse_keys(self, keys):
         if not keys:
             raise AssertionError('"keys" argument can not be empty.')
         list_keys = []
@@ -1919,7 +1920,7 @@ class SLtoB:
         return list_keys
 
     def _convert_special_keys(self, keys):
-        KeysRecord = NamedTuple("KeysRecord", "converted, original special")
+        KeysRecord = namedtuple("KeysRecord", "converted, original special")
         converted_keys = []
         for key in keys:
             ky = self._parse_aliases(key)
