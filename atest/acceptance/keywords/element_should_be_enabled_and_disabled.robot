@@ -1,7 +1,10 @@
 *** Settings ***
-Documentation     Tests disabled and readonly elements
-Test Setup        Go To Page "forms/enabled_disabled_fields_form.html"
-Resource          ../resource.robot
+Documentation       Tests disabled and readonly elements
+
+Resource            ../resource.robot
+
+Test Setup          Go To Page "forms/enabled_disabled_fields_form.html"
+
 
 *** Test Cases ***
 Input Text
@@ -45,6 +48,7 @@ Readonly with different syntaxes
 
 Not Input nor Editable Element
     Should Be Enabled Not Disabled    table1
+
 
 *** Keywords ***
 Should Be Enabled Not Disabled

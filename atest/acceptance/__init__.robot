@@ -1,8 +1,8 @@
 *** Settings ***
-Resource          resource.robot
-Force Tags        Regression
+Resource        resource.robot
+
+Test Tags       regression
+
 
 *** Variables ***
-${FF PROFILE DIR}=   ${CURDIR}${/}..${/}resources${/}firefoxprofile
-
-*** Keywords ***
+${FF PROFILE DIR}=      ${CURDIR}${/}..${/}resources${/}firefoxprofile

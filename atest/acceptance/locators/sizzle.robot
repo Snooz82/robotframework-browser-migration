@@ -1,7 +1,10 @@
 *** Settings ***
-Documentation     Tests JQuery
-Test Setup        Go To Page "jquery.html"
-Resource          ../resource.robot
+Documentation       Tests JQuery
+
+Resource            ../resource.robot
+
+Test Setup          Go To Page "jquery.html"
+
 
 *** Test Cases ***
 Find By Id

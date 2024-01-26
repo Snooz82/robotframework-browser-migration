@@ -1,7 +1,10 @@
 *** Settings ***
-Documentation     Tests different supported xpath strategies
-Test Setup        Go To Page "links.html"
-Resource          ../resource.robot
+Documentation       Tests different supported xpath strategies
+
+Resource            ../resource.robot
+
+Test Setup          Go To Page "links.html"
+
 
 *** Test Cases ***
 xpath with prefix should work
@@ -15,9 +18,9 @@ xpath with (// and without prefix should work
     Page Should Contain Element    (//div[@id="div_id"]/a)[1]
 
 Locator with with data prefix
-    Page Should Contain Element       data:id:my_id
-    Page Should Contain Element       data:automation:my_automation_id
-    Page Should Not Contain Element   data:non_existent:some_random_id
+    Page Should Contain Element    data:id:my_id
+    Page Should Contain Element    data:automation:my_automation_id
+    Page Should Not Contain Element    data:non_existent:some_random_id
 
 Locator without prefix
     Page Should Contain Element    div_id
@@ -43,18 +46,26 @@ Locator with separator and with matchign prefix cannot be used as-is
 
 Multiple Locators with double arrows as separator should work
     Page Should Contain Element    css:div#div_id >> xpath:a[6] >> id:image1_id
+    ${list}    Create List    css:div#div_id    xpath:a[6]    id:image1_id
+    Page Should Contain Element    ${list}
 
 Multiple Locators strategy should be case-insensitive
     Page Should Contain Element    cSs=div#div_id >> XpaTh=a[6] >> iD=image1_id
 
 Multiple Locators as a List should work
-    ${element} =   Get WebElement    id:foo:bar
-    ${locator_list} =    Create List    id:div_id    ${element}    id:bar=foo
+    ${element}    Get WebElement    id:foo:bar
+    ${locator_list}    Create List    ${element}    id:bar=foo
     Page Should Contain Element    ${locator_list}
 
+Multiple Locators as a List 2 should work
+    ${parent}    Get WebElement    css:div#div_id
+    ${list}    Create List    ${parent}    xpath:a[6]    id:image1_id
+    Page Should Contain Element    ${list}
+
 When One Of Locator From Multiple Locators Is Not Found Keyword Fails
+    [Tags]    browser:different_error
     Run Keyword And Expect Error
-    ...    Element with locator 'id:not_here' not found.
+    ...    Page should have contained element 'css=div#div_id >> id:not_here >> iD=image1_id' but did not.
     ...    Page Should Contain Element    css=div#div_id >> id:not_here >> iD=image1_id
 
 When One Of Locator From Multiple Locators Matches Multiple Elements Keyword Should Not Fail

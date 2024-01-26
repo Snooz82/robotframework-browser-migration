@@ -1,5 +1,6 @@
 *** Settings ***
-Library    SeleniumLibraryToBrowser    plugins=${CURDIR}/PluginWithVarArgs.py;Text1;Text2;Text3
+Library     SeleniumLibraryToBrowser    plugins=${CURDIR}/PluginWithVarArgs.py;Text1;Text2;Text3
+
 
 *** Test Cases ***
 Testing Plugin With Variable Number Of Arguments

@@ -1,10 +1,11 @@
 *** Settings ***
-Library    SeleniumLibraryToBrowser    plugins=${CURDIR}/OpenBrowserExample.py
+Library     SeleniumLibraryToBrowser    plugins=${CURDIR}/OpenBrowserExample.py
+
 
 *** Variables ***
-${SERVER}=         localhost:7000
-${ROOT}=           http://${SERVER}/html
-&{EXTRA DICTIONARY}    extra=dictionary    key=value
+${SERVER}=              localhost:7000
+${ROOT}=                http://${SERVER}/html
+&{EXTRA DICTIONARY}     extra=dictionary    key=value
 
 
 *** Test Cases ***

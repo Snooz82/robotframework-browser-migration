@@ -1,7 +1,9 @@
 *** Settings ***
-Suite Setup       Go To Page "javascript/click_modifier.html"
-Test Setup        Initialize Page
-Resource          ../resource.robot
+Resource        ../resource.robot
+
+Suite Setup     Go To Page "javascript/click_modifier.html"
+Test Setup      Initialize Page
+
 
 *** Test Cases ***
 Click Element Modifier CTRL
@@ -43,9 +45,10 @@ Click Element Wrong Modifier
     ...    Click Element    Button    Foobar
 
 Click Element Action Chain and modifier
-    [Documentation]     LOG 1:1 INFO Clicking element 'Button' with CTRL.
+    [Documentation]    LOG 1:1 INFO Clicking element 'Button' with CTRL.
     Click Element    Button    modifier=ALT    action_chain=True
     Element Text Should Be    output    ALT click
+
 
 *** Keywords ***
 Initialize Page
@@ -55,4 +58,4 @@ Initialize Page
 Close Popup Window
     Switch Window    myName    timeout=5s
     Close Window
-    Switch Window    MAIN      timeout=5s
+    Switch Window    MAIN    timeout=5s

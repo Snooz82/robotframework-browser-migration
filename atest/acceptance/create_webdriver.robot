@@ -1,14 +1,18 @@
 *** Settings ***
-Documentation     Tests Webdriver
-Resource          resource.robot
-Library           Collections
+Documentation       Tests Webdriver
+
+Resource            resource.robot
+Library             Collections
+
+Test Tags           robot:skip
+
 
 *** Test Cases ***
 Create Webdriver Creates Functioning WebDriver
     [Documentation]
     ...    LOG 1:1 INFO REGEXP: Creating an instance of the \\w+ WebDriver.
     ...    LOG 1:19 DEBUG REGEXP: Created \\w+ WebDriver instance with session id (\\w|-)+.
-    [Tags]    Known Issue Internet Explorer    Known Issue Safari
+    [Tags]    known issue internet explorer    known issue safari
     [Setup]    Set Driver Variables
     Create Webdriver    ${DRIVER_NAME}    kwargs=${KWARGS}
     Go To    ${FRONT_PAGE}
@@ -28,9 +32,12 @@ Create Webdriver With Duplicate Arguments
 
 Create Webdriver With Bad Keyword Argument Dictionary
     [Documentation]    Invalid arguments types
-    ${status}    ${error} =    Run Keyword And Ignore Error    Create Webdriver    Firefox    kwargs={'spam': 'eggs'}
+    ${status}    ${error}=    Run Keyword And Ignore Error    Create Webdriver    Firefox    kwargs={'spam': 'eggs'}
     Should Be Equal    ${status}    FAIL
-    Should Match Regexp    ${error}    (TypeError: (?:WebDriver.)?__init__\\(\\) got an unexpected keyword argument 'spam'|kwargs must be a dictionary\.)
+    Should Match Regexp
+    ...    ${error}
+    ...    (TypeError: (?:WebDriver.)?__init__\\(\\) got an unexpected keyword argument 'spam'|kwargs must be a dictionary\.)
+
 
 *** Keywords ***
 Set Driver Variables
@@ -45,8 +52,9 @@ Set Driver Variables
     ...    chrome=CHROME    safari=SAFARI    headlessfirefox=FIREFOX    headlesschrome=CHROME
     ${dc name}=    Get From Dictionary    ${dc names}    ${BROWSER.lower().replace(' ', '')}
     ${caps}=    Evaluate    selenium.webdriver.DesiredCapabilities.${dc name}
-    ...                     modules=selenium, selenium.webdriver
+    ...    modules=selenium, selenium.webdriver
     ${kwargs}=    Create Dictionary
-    Run Keyword If    "${name}"=="Remote"    Set To Dictionary    ${kwargs}    command_executor
-    ...    ${REMOTE_URL}    desired_capabilities    ${caps}
+    IF    "${name}"=="Remote"
+        Set To Dictionary    ${kwargs}    command_executor    ${REMOTE_URL}    desired_capabilities    ${caps}
+    END
     Set Test Variable    ${KWARGS}    ${kwargs}

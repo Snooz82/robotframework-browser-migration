@@ -1,9 +1,11 @@
 *** Settings ***
-Library    SeleniumLibraryToBrowser    plugins=${CURDIR}/PluginWithArgs.py;${ARG1};${ARG2},${CURDIR}/MyPlugin.py
+Library     SeleniumLibraryToBrowser    plugins=${CURDIR}/PluginWithArgs.py;${ARG1};${ARG2},${CURDIR}/MyPlugin.py
+
 
 *** Variables ***
-${ARG1}    Text1
-${ARG2}    Text2
+${ARG1}     Text1
+${ARG2}     Text2
+
 
 *** Test Cases ***
 Testing Plugin With Arguments

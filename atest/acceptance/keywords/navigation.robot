@@ -1,12 +1,17 @@
 *** Settings ***
-Documentation     Tests navigation
-Test Setup        Go To Page "links.html"
-Resource          ../resource.robot
-Force Tags        Known Issue Internet Explorer
+Documentation       Tests navigation
+
+Resource            ../resource.robot
+
+Test Setup          Go To Page "links.html"
+
+Test Tags           known issue internet explorer
+
 
 *** Variables ***
-${LINKS TITLE}    (root)/links.html
-${INDEX TITLE}    (root)/index.html
+${LINKS TITLE}      (root)/links.html
+${INDEX TITLE}      (root)/index.html
+
 
 *** Test Cases ***
 Go To
@@ -14,7 +19,7 @@ Go To
     Title Should Be    ${LINKS TITLE}
 
 Go Back
-    [Tags]    Known Issue Safari
+    [Tags]    known issue safari
     Click Link    Relative
     Title Should Be    ${INDEX TITLE}
     Go Back
@@ -27,7 +32,7 @@ Click Link
     Title Should Be    ${INDEX TITLE}
 
 Click Link With Whitespace
-    [Tags]    Known Issue Safari
+    [Tags]    known issue safari
     Click Link    Link with whitespace
     Verify Location Is "target/second.html"
 
@@ -90,6 +95,7 @@ Target Opens in New Window
     Switch Window    ${INDEX TITLE}
     Verify Location Is "index.html"
     [Teardown]    Run Keyword If Test Passed    Run Keywords    Close Window    Switch Window
+
 
 *** Keywords ***
 Wait Until Window Is Open

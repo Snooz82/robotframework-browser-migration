@@ -104,87 +104,61 @@ class CookieInformation:
 
 
 class WebElement(str):
-    # self._key_attrs = {
-    #         None: ["@id", "@name"],
-    #         "a": [
-    #             "@id",
-    #             "@name",
-    #             "@href",
-    #             "normalize-space(descendant-or-self::text())",
-    #         ],
-    #         "img": ["@id", "@name", "@src", "@alt"],
-    #         "input": ["@id", "@name", "@value", "@src"],
-    #         "button": [
-    #             "@id",
-    #             "@name",
-    #             "@value",
-    #             "normalize-space(descendant-or-self::text())",
-    #         ],
-    #     }
-
-    # def _get_tag_and_constraints(self, tag):
-    #     if tag is None:
-    #         return None, {}
-    #     tag = tag.lower()
-    #     constraints = {}
-    #     if tag == "link":
-    #         tag = "a"
-    #     if tag == "partial link":
-    #         tag = "a"
-    #     elif tag == "image":
-    #         tag = "img"
-    #     elif tag == "list":
-    #         tag = "select"
-    #     elif tag == "radio button":
-    #         tag = "input"
-    #         constraints["type"] = "radio"
-    #     elif tag == "checkbox":
-    #         tag = "input"
-    #         constraints["type"] = "checkbox"
-    #     elif tag == "text field":
-    #         tag = "input"
-    #         constraints["type"] = [
-    #             "date",
-    #             "datetime-local",
-    #             "email",
-    #             "month",
-    #             "number",
-    #             "password",
-    #             "search",
-    #             "tel",
-    #             "text",
-    #             "time",
-    #             "url",
-    #             "week",
-    #             "file",
-    #         ]
-    #     elif tag == "file upload":
-    #         tag = "input"
-    #         constraints["type"] = "file"
-    #     elif tag == "text area":
-    #         tag = "textarea"
-    #     return tag, constraints
+    @staticmethod
+    def _data_parser(loc):
+        try:
+            name, value = loc.split(":")
+            if "" in [name, value]:
+                raise ValueError
+            return f'//*[@data-{name}="{value}"]'
+        except ValueError:
+            raise ValueError(f"Provided selector ({loc}) is malformed. Correct format: name:value.")
 
     LOCATORS: ClassVar[Dict[str, str]] = {
-        "id": "id={loc}",
-        "name": "css=[name={loc}]",
-        "identifier": "css=[id={loc}], [name={loc}]",
-        "class": "css=.{loc}",
-        "tag": "css={loc}",
-        "xpath": "xpath={loc}",
-        "css": "css={loc}",
-        "link": 'css=a >> text="{loc}"',
-        "partial link": "css=a >> text={loc}",
-        "default": "css=[id={loc}], [name={loc}]",
-        "text": "text={loc}",
-        "element": "element={loc}",
+        "id": lambda loc: f"id={loc}",
+        "name": lambda loc: f"css=[name={loc}]",
+        "identifier": lambda loc: f"css=[id={loc}], [name={loc}]",
+        "class": lambda loc: f"css=.{loc}",
+        "tag": lambda loc: f"css={loc}",
+        "xpath": lambda loc: f"xpath={loc}",
+        "css": lambda loc: f"css={loc}",
+        "jquery": lambda loc: f"css={loc}",
+        "sizzle": lambda loc: f"css={loc}",
+        "link": lambda loc: f'css=a >> text="{loc}"',
+        "partial link": lambda loc: f"css=a >> text={loc}",
+        "text": lambda loc: f"text={loc}",
+        "data": _data_parser,
+        "element": lambda loc: f"element={loc}",
+        "default": lambda loc: f"css=[id={loc}], [name={loc}]",
+        "nth": lambda loc: f"nth={loc}",
     }
     original_locator: Union[str, tuple] = ""
 
     @classmethod
+    def from_any(cls, locator: Union[list, tuple, str]) -> "WebElement":
+        if isinstance(locator, (list, tuple)):
+            return cls.from_list(locator)
+        return cls.from_string(locator)
+
+    @classmethod
     def from_string(cls, locator: str) -> "WebElement":
-        for illegal_loc in ["dom", "sizzle", "jquery", "data"]:
-            match = re.match(f"{illegal_loc} ?[:=] ?", locator)
+        if " >> " in locator:
+            web_elem = cls(" >> ".join(cls.from_string(loc) for loc in locator.split(" >> ")))
+        else:
+            web_elem = cls.get_single_locator(locator)
+        web_elem.original_locator = locator
+        return web_elem
+
+    @classmethod
+    def from_list(cls, locator: List[str]) -> "WebElement":
+        web_elem = cls(" >> ".join(cls.from_string(loc) for loc in locator))
+        web_elem.original_locator = " >> ".join(locator)
+        return web_elem
+
+    @classmethod
+    def get_single_locator(cls, locator: str) -> "WebElement":
+        for illegal_loc in ["dom"]:
+            match = re.match(f"{illegal_loc} ?[:=] ?", locator, flags=re.IGNORECASE)
             if match:
                 raise ValueError(
                     f"Invalid locator strategy '{illegal_loc}'.\n"
@@ -192,19 +166,13 @@ class WebElement(str):
                     f"{list(cls.LOCATORS.keys())}"
                 )
         for strategy, selector in cls.LOCATORS.items():
-            match = re.match(f"{strategy} ?[:=] ?", locator)
+            match = re.match(f"{strategy} ?[:=] ?", locator, flags=re.IGNORECASE)
             if match:
                 loc = locator[match.end() :]
-                new_locator = cls(selector.format(loc=loc))
-                new_locator.original_locator = locator
-                return new_locator
+                return cls(selector(loc))
         if re.match(r"\(*//", locator):
-            new_locator = cls(f"xpath={locator}")
-            new_locator.original_locator = locator
-            return new_locator
-        new_locator = cls(f"[id='{locator}'], [name='{locator}']")
-        new_locator.original_locator = locator
-        return new_locator
+            return cls(f"xpath={locator}")
+        return cls(f"[id='{locator}'], [name='{locator}']")
 
     @staticmethod
     def is_default(locator: str):
@@ -252,7 +220,7 @@ class V3Listener:
             self.depr = True
 
 
-@library(converters={WebElement: WebElement.from_string})
+@library(converters={WebElement: WebElement.from_any})
 class SeleniumLibraryToBrowser(DynamicCore):
     """General library documentation."""
 
@@ -262,26 +230,29 @@ class SeleniumLibraryToBrowser(DynamicCore):
     def __init__(
         self,
         timeout=timedelta(seconds=5.0),
-        implicit_wait=timedelta(seconds=0.0),
+        implicit_wait=timedelta(seconds=10.0),
         run_on_failure="Capture Page Screenshot",
         screenshot_root_directory: Optional[str] = None,
         plugins: Optional[str] = None,
         event_firing_webdriver: Optional[str] = None,
+        page_load_timeout=timedelta(minutes=5),
+        *,
         browser_args: Optional[List[str]] = None,
     ):
         """Library init doc."""
-        sl2b = SLtoB(
+        self.sl2b = SLtoB(
             timeout=timeout,
             implicit_wait=implicit_wait,
-            run_on_failure=run_on_failure,
             screenshot_root_directory=screenshot_root_directory,
-            plugins=plugins,
-            event_firing_webdriver=event_firing_webdriver,
             browser_args=browser_args,
+            library=self,
+            page_load_timeout=page_load_timeout,
         )
-        components = [sl2b]
+        self.run_on_failure_keyword = self.sl2b.resolve_keyword(run_on_failure)
+        components = [self.sl2b]
         super().__init__(components)
         self.sl = SeleniumLibrary() if SeleniumLibrary else None
+        self._running_on_failure_keyword = False
 
     @property
     def dry_run(self):
@@ -294,7 +265,62 @@ class SeleniumLibraryToBrowser(DynamicCore):
     def run_keyword(self, name, args, kwargs=None):
         if not self.keyword_implemented(name):
             raise SkipExecution(f"Keyword '{name.replace('_', ' ').title() }' is not implemented")
-        return super().run_keyword(name, args, kwargs)
+        try:
+            retun_value = super().run_keyword(name, args, kwargs)
+            self.sleep_selenium_speed(name)
+            return retun_value
+        except Exception as e:
+            self.failure_occurred()
+            raise e
+
+    def failure_occurred(self):
+        """Method that is executed when a SeleniumLibrary keyword fails.
+
+        By default, executes the registered run-on-failure keyword.
+        Libraries extending SeleniumLibrary can overwrite this hook
+        method if they want to provide custom functionality instead.
+        """
+        if self._running_on_failure_keyword or not self.run_on_failure_keyword:
+            return
+        try:
+            self._running_on_failure_keyword = True
+            if self.run_on_failure_keyword.lower() == "capture page screenshot":
+                self.sl2b.capture_page_screenshot()
+            else:
+                BuiltIn().run_keyword(self.run_on_failure_keyword)
+        except Exception as err:
+            logger.warn(
+                f"Keyword '{self.run_on_failure_keyword}' could not be run on failure: {err}"
+            )
+        finally:
+            self._running_on_failure_keyword = False
+
+    def sleep_selenium_speed(self, kw_name: str):
+        checks = [
+            lambda name: name.startswith("capture"),
+            lambda name: "should" in name,
+            lambda name: "close" in name,
+            lambda name: name.startswith("get"),
+            lambda name: name.startswith("log"),
+            lambda name: name
+            in [
+                "maximize_browser_window",
+                "open_browser",
+                "reload_page",
+                "select_frame",
+                "set_screenshot_directory",
+                "set_selenium_implicit_wait",
+                "set_selenium_page_load_timeout",
+                "set_selenium_speed",
+                "set_selenium_timeout",
+                "switch_browser",
+                "switch_window",
+            ],
+        ]
+        for check in checks:
+            if check(kw_name.lower()):
+                return
+        time.sleep(self.sl2b.selenium_speed.total_seconds())
 
     def get_keyword_names(self):
         if self.dry_run:
@@ -322,25 +348,44 @@ class SLtoB:
     def __init__(
         self,
         timeout=timedelta(seconds=5.0),
-        implicit_wait=timedelta(seconds=0.0),
-        run_on_failure="Capture Page Screenshot",
+        implicit_wait=timedelta(seconds=10.0),
         screenshot_root_directory: Optional[str] = None,
-        plugins: Optional[str] = None,
-        event_firing_webdriver: Optional[str] = None,
         browser_args: Optional[List[str]] = None,
+        library: SeleniumLibraryToBrowser = None,
+        page_load_timeout=timedelta(minutes=5),
     ):
         self.timeout = timeout
-        self.implicit_wait = implicit_wait
-        self.run_on_failure = run_on_failure
         self.screenshot_root_directory = screenshot_root_directory
-        self.plugins = plugins
-        self.event_firing_webdriver = event_firing_webdriver
+        self.library = library
+        self.page_load_timeout = page_load_timeout
         self._browser: Optional[Browser] = None
         self._browser_args = browser_args or []
-        self._browser_indexes = {}
-        self._browser_aliases = {}
-        self._browser_index = count()
-        self._browser_page_catalog = {}
+        self._context_indexes = {}
+        self._context_aliases = {}
+        self._browser_index = count(1)
+        self._context_page_catalog = {}
+        self._selenium_speed = timedelta(seconds=0.0)
+        self.b.set_browser_timeout(implicit_wait, scope=Scope.Global)
+
+    @property
+    def implicit_wait(self):
+        to = self.b.get_timeout(None)
+        return timedelta(milliseconds=to)
+
+    @property
+    def selenium_speed(self) -> timedelta:
+        return self._selenium_speed
+
+    @selenium_speed.setter
+    def selenium_speed(self, value: Union[int, float, str, timedelta]):
+        if isinstance(value, (int, float)):
+            self._selenium_speed = timedelta(seconds=value)
+        elif isinstance(value, str):
+            self._selenium_speed = timedelta(seconds=timestr_to_secs(value))
+        elif isinstance(value, timedelta):
+            self._selenium_speed = value
+        else:
+            raise TypeError(f"Value '{value}' is not a valid type.")
 
     @property
     def b(self) -> Browser:
@@ -604,7 +649,6 @@ class SLtoB:
     ):
         modifiers = []
         if modifier and modifier.upper() != "FALSE":
-            logger.console(modifier)
             modifiers = modifier.split("+")
         else:
             logger.info(f"Clicking element '{locator.original_locator}'.")
@@ -665,26 +709,40 @@ class SLtoB:
         href and the link text.
         """
         locator = self.get_link_locator(locator)
-        self.click_element(locator, modifier)
+        for e in self.get_webelements(locator):
+            if self.b.get_property(e, "nodeName") == "A":
+                self.click_element(e, modifier)
+                return
+        raise ElementNotFound(f"Element with locator '{locator.original_locator}' not found.")
 
     @keyword(tags=("IMPLEMENTED",))
     def close_all_browsers(self):
         self.b.close_browser(SelectionType.ALL)
-        self._browser_aliases = {}
-        self._browser_indexes = {}
+        self._context_page_catalog = {}
+        self._context_aliases = {}
+        self._context_indexes = {}
+        self._browser_index = count(1)
 
     @keyword(tags=("IMPLEMENTED",))
     def close_browser(self):
-        current_id = self.b.get_browser_ids(SelectionType.ACTIVE)
-        for index, id in self._browser_indexes.items():
+        context_ids = self.b.get_context_ids(SelectionType.CURRENT, browser=SelectionType.CURRENT)
+        if not context_ids:
+            return self.close_all_browsers()
+        current_id = context_ids[0]
+        for index, id in self._context_indexes.items():
             if id == current_id:
-                self._browser_indexes.pop(index)
-                for alias, idx in self._browser_aliases.items():
+                self._context_page_catalog.pop(id)
+                self._context_indexes.pop(index)
+                for alias, idx in self._context_aliases.items():
                     if idx == index:
-                        self._browser_aliases.pop(alias)
+                        self._context_aliases.pop(alias)
                         break
                 break
-        self.b.close_browser(SelectionType.CURRENT)
+        self.b.close_context()
+        if not self.b.get_context_ids(context=SelectionType.ALL, browser=SelectionType.CURRENT):
+            self.b.close_browser(SelectionType.CURRENT)
+            return None
+        return None
 
     @keyword(tags=("IMPLEMENTED",))
     def close_window(self):
@@ -967,6 +1025,10 @@ class SLtoB:
         self.log_source(loglevel)
         self.b.get_element_count(f"{locator} >>> text={text}", GREATER_THAN, 0)
 
+    @keyword
+    def get_action_chain_delay(self):
+        ...
+
     @keyword(tags=("IMPLEMENTED",))
     def get_all_links(self):
         return [
@@ -978,11 +1040,11 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def get_browser_aliases(self):
-        return DotDict(self._browser_aliases)
+        return DotDict(self._context_aliases)
 
     @keyword(tags=("IMPLEMENTED",))
     def get_browser_ids(self):
-        return list(self._browser_indexes.keys())
+        return list(self._context_indexes.keys())
 
     @keyword(tags=("IMPLEMENTED",))
     def get_cookie(self, name: str) -> CookieInformation:
@@ -1061,29 +1123,31 @@ class SLtoB:
             self.b.switch_page(page_id, context=SelectionType.ALL, browser=SelectionType.ALL)
             yield self.b.get_url()
 
-    def _get_page_ids(self, browser: str):
-        if browser.upper() == "CURRENT":
+    def _get_page_ids(self, context: str):
+        if context.upper() == "CURRENT":
             return self._get_current_page_ids()
-        if browser.upper() == "ALL":
+        if context.upper() == "ALL":
             return list(self._get_all_page_ids())
 
-        id = self._get_pw_browser_id(browser)
-        org_browser = self.b.switch_browser(id)
+        id = self._get_pw_context_id(context)
+        org_context = self.b.switch_context(id, browser=SelectionType.ALL)
         try:
             return self._get_current_page_ids()
         finally:
-            self.b.switch_browser(org_browser)
+            self.b.switch_context(org_context, browser=SelectionType.ALL)
 
     def _get_current_page_ids(self) -> List[str]:
-        pw_page_ids = self.b.get_page_ids(browser=SelectionType.CURRENT)
-        current_browser_id = self._get_current_browser_id()
+        pw_page_ids = self.b.get_page_ids(
+            browser=SelectionType.CURRENT, context=SelectionType.CURRENT
+        )
+        current_context_id = self._get_current_context_id()
         for pw_page_id in pw_page_ids:
-            if pw_page_id not in self._browser_page_catalog[current_browser_id]:
-                self._browser_page_catalog[current_browser_id].append(pw_page_id)
-        for page_id in self._browser_page_catalog[current_browser_id]:
+            if pw_page_id not in self._context_page_catalog[current_context_id]:
+                self._context_page_catalog[current_context_id].append(pw_page_id)
+        for page_id in self._context_page_catalog[current_context_id]:
             if page_id not in pw_page_ids:
-                self._browser_page_catalog[current_browser_id].remove(page_id)
-        return self._browser_page_catalog[current_browser_id]
+                self._context_page_catalog[current_context_id].remove(page_id)
+        return self._context_page_catalog[current_context_id]
 
     def _get_all_page_ids(self) -> Generator[str, None, None]:
         catalog = self.b.get_browser_catalog()
@@ -1092,23 +1156,27 @@ class SLtoB:
             for context in browser["contexts"]:
                 for page in context["pages"]:
                     page_ids.append(page["id"])
-                    if page["id"] not in self._browser_page_catalog[browser["id"]]:
-                        self._browser_page_catalog[browser["id"]].append(page["id"])
-            for page_id in self._browser_page_catalog[browser["id"]]:
-                if page_id not in page_ids:
-                    self._browser_page_catalog[browser["id"]].remove(page_id)
-        for browser in self._browser_page_catalog:
-            for page in self._browser_page_catalog[browser]:
+                    if page["id"] not in self._context_page_catalog[context["id"]]:
+                        self._context_page_catalog[context["id"]].append(page["id"])
+                for page_id in self._context_page_catalog[context["id"]]:
+                    if page_id not in page_ids:
+                        self._context_page_catalog[context["id"]].remove(page_id)
+        for context in self._context_page_catalog:
+            for page in self._context_page_catalog[context]:
                 yield page
 
-    def _get_pw_browser_id(self, browser):
-        if isinstance(browser, str) and browser.upper() == "CURRENT":
-            return self._get_current_browser_id()
-        id = self._browser_indexes.get(browser, None) or self._browser_indexes.get(
-            self._browser_aliases.get(browser), None
+    def _get_pw_context_id(self, context):
+        if isinstance(context, str) and context.upper() == "CURRENT":
+            return self._get_current_context_id()
+        try:
+            int_ctx = int(context)
+        except ValueError:
+            int_ctx = None
+        id = self._context_indexes.get(int_ctx, None) or self._context_indexes.get(
+            self._context_aliases.get(context), None
         )
         if id is None:
-            raise ValueError(f"Browser '{browser}' not found")
+            raise WindowNotFound(f"Non-existing index or alias '{context}'.")
         return id
 
     @keyword(tags=("IMPLEMENTED",))
@@ -1139,13 +1207,17 @@ class SLtoB:
     def get_selenium_implicit_wait(self):
         return self.b.timeout
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
+    def get_selenium_page_load_timeout(self):
+        return secs_to_timestr(self.page_load_timeout.total_seconds())
+
+    @keyword(tags=("IMPLEMENTED",))
     def get_selenium_speed(self):
-        ...
+        return secs_to_timestr(self.selenium_speed)
 
     @keyword(tags=("IMPLEMENTED",))
     def get_selenium_timeout(self):
-        return self.b.timeout
+        return secs_to_timestr(self.timeout.total_seconds())
 
     @keyword
     def get_session_id(self):
@@ -1247,7 +1319,12 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def get_webelements(self, locator: WebElement):
-        return self.b.get_elements(locator)
+        locators = []
+        for idx, loc in enumerate(self.b.get_elements(locator)):
+            web_loc = WebElement(loc)
+            web_loc.original_locator = f"{locator.original_locator} >> nth={idx}"
+            locators.append(web_loc)
+        return locators
 
     @keyword(tags=("IMPLEMENTED",))
     def get_window_handles(self, browser: str = "CURRENT"):
@@ -1308,8 +1385,10 @@ class SLtoB:
             page=SelectionType.CURRENT, context=SelectionType.CURRENT, browser=SelectionType.CURRENT
         )[0]
 
-    def _get_current_browser_id(self):
-        return self.b.get_browser_ids(browser=SelectionType.CURRENT)[0]
+    def _get_current_context_id(self):
+        return self.b.get_context_ids(context=SelectionType.CURRENT, browser=SelectionType.CURRENT)[
+            0
+        ]
 
     @keyword(tags=("IMPLEMENTED",))
     def go_back(self):
@@ -1317,7 +1396,7 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def go_to(self, url):
-        self.b.go_to(url)
+        self.b.go_to(url, timeout=self.page_load_timeout)
 
     @keyword
     def handle_alert(self, action: str = "ACCEPT", timeout: Optional[timedelta] = None):
@@ -1479,15 +1558,28 @@ class SLtoB:
         service_log_path: Optional[str] = None,
         executable_path: Optional[str] = None,
     ):
+        if alias in self._context_aliases:
+            idx = self._context_aliases[alias]
+            id = self._context_indexes[idx]
+            self.b.switch_context(id, browser=SelectionType.ALL)
+            self.b.go_to(url)
+            return idx
         browser_enum, headless = BROWSERS.get(browser, (SupportedBrowsers.chromium, False))
         browser_id, context_id, page_info = self.b.new_persistent_context(
-            url=url, browser=browser_enum, args=options, headless=headless, viewport=None
+            url=url,
+            browser=browser_enum,
+            args=options,
+            executablePath=executable_path,
+            userDataDir=ff_profile_dir or "",
+            headless=headless,
+            timeout=self.page_load_timeout,
+            viewport=None,
         )
-        identifier = str(next(self._browser_index))
-        self._browser_indexes[identifier] = browser_id
-        self._browser_page_catalog[browser_id] = [page_info["page_id"]]
+        identifier = next(self._browser_index)
+        self._context_indexes[identifier] = context_id
+        self._context_page_catalog[context_id] = [page_info["page_id"]]
         if alias:
-            self._browser_aliases[alias] = identifier
+            self._context_aliases[alias] = identifier
         return identifier
 
     @keyword(tags=("IMPLEMENTED",))
@@ -1973,13 +2065,31 @@ class SLtoB:
                 f"had selection, but '{actual_value}' was selected."
             )
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def register_keyword_to_run_on_failure(self, keyword: Optional[str]):
-        ...
+        old_keyword = self.library.run_on_failure_keyword
+        new_keyword = self.resolve_keyword(keyword)
+        self.library.run_on_failure_keyword = new_keyword
+        logger.info(f"{(new_keyword or 'No keyword')} will be run on failure.")
+        return old_keyword
+
+    @staticmethod
+    def resolve_keyword(name):
+        if name is None:
+            return None
+        if isinstance(name, str) and name.upper() == "NOTHING" or name.upper() == "NONE":
+            return None
+        return name
 
     @keyword(tags=("IMPLEMENTED",))
     def reload_page(self):
-        self.b.reload()
+        old_timeout = self.b.set_browser_timeout(self.page_load_timeout, scope=Scope.Test)
+        try:
+            self.b.reload()
+        finally:
+            self.b.set_browser_timeout(
+                timedelta(seconds=timestr_to_secs(old_timeout)), scope=Scope.Test
+            )
 
     @keyword
     def remove_location_strategy(self, strategy_name: str):
@@ -2061,6 +2171,10 @@ class SLtoB:
         self.b.check_checkbox(selector)
 
     @keyword
+    def set_action_chain_delay(self, value: timedelta) -> str:
+        ...
+
+    @keyword
     def set_browser_implicit_wait(self, value: timedelta):
         ...
 
@@ -2074,21 +2188,27 @@ class SLtoB:
         self.screenshot_root_directory = path
         return previous
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def set_selenium_implicit_wait(self, value: timedelta):
-        return self.b.set_browser_timeout(value)
+        return self.b.set_browser_timeout(value, scope=Scope.Global)
 
-    @keyword
+    @keyword(tags=("IMPLEMENTED",))
     def set_selenium_page_load_timeout(self, value: timedelta) -> str:
-        ...
+        old_timout = self.get_selenium_page_load_timeout()
+        self.page_load_timeout = value
+        return old_timout
 
     @keyword(tags=("IMPLEMENTED",))
     def set_selenium_speed(self, value: timedelta):
-        return self.b.millisecs_to_timestr(self.b.convert_timeout(value))
+        old_speed = self.get_selenium_speed()
+        self.selenium_speed = value
+        return old_speed
 
     @keyword(tags=("IMPLEMENTED",))
     def set_selenium_timeout(self, value: timedelta):
-        return self.b.set_browser_timeout(value)
+        old_timeout = self.get_selenium_timeout()
+        self.timeout = value
+        return old_timeout
 
     @keyword
     def set_window_position(self, x: int, y: int):
@@ -2124,12 +2244,16 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def switch_browser(self, index_or_alias: Union[int, str]):
-        id = self._browser_indexes.get(index_or_alias, None) or self._browser_indexes.get(
-            self._browser_aliases.get(index_or_alias), None
+        try:
+            int_index = int(index_or_alias)
+        except ValueError:
+            int_index = None
+        id = self._context_indexes.get(int_index, None) or self._context_indexes.get(
+            self._context_aliases.get(index_or_alias), None
         )
         if id is None:
-            raise ValueError(f"Browser '{index_or_alias}' not found")
-        return self.b.switch_browser(id)
+            raise WindowNotFound(f"No browser with index or alias '{index_or_alias}' found.")
+        return self.b.switch_context(id, browser=SelectionType.ALL)
 
     @keyword(tags=("IMPLEMENTED",))
     def switch_window(
@@ -2149,10 +2273,10 @@ class SLtoB:
                         if locator.upper() == "CURRENT":
                             return current_page_id
                         if locator.upper() == "NEW":
-                            id = self._get_pw_browser_id(browser)
-                            if id != self._get_current_browser_id:
-                                self.b.switch_browser(id)
-                            self.b.switch_page("NEW")
+                            id = self._get_pw_context_id(browser)
+                            # if id != self._get_current_context_id:
+                            #     self.b.switch_context(id, browser=SelectionType.ALL)
+                            self.b.switch_page("NEW", context=id, browser=SelectionType.ALL)
                             return current_page_id
                         locator_match = re.match(
                             r"(?P<strategy>name|title|url|default)[:=](?P<locator>.*)", locator
@@ -2493,6 +2617,7 @@ class SLtoB:
         timeout: Optional[timedelta] = None,
         error: Optional[str] = None,
     ):
+        timeout = self.timeout if timeout is None else timeout
         if "return" not in condition:
             raise ValueError(f"Condition '{condition}' did not have mandatory 'return'.")
         self._wait_until(
@@ -2510,6 +2635,7 @@ class SLtoB:
         timeout: Optional[timedelta] = None,
         error: Optional[str] = None,
     ):
+        timeout = self.timeout if timeout is None else timeout
         self._wait_until(
             lambda: text in self.b.get_text(locator),
             f"Element '{locator.original_locator}' did not get text '{text}' in <TIMEOUT>.",
@@ -2525,6 +2651,7 @@ class SLtoB:
         timeout: Optional[timedelta] = None,
         error: Optional[str] = None,
     ):
+        timeout = self.timeout if timeout is None else timeout
         self._wait_until(
             lambda: text not in self.b.get_text(locator),
             f"Element '{locator.original_locator}' still had text '{text}' after <TIMEOUT>.",
@@ -2539,6 +2666,7 @@ class SLtoB:
         timeout: Optional[timedelta] = None,
         error: Optional[str] = None,
     ):
+        timeout = self.timeout if timeout is None else timeout
         try:
             self.b.get_element_states(locator, CONTAINS, "attached")
         except AssertionError:
@@ -2559,6 +2687,7 @@ class SLtoB:
         timeout: Optional[timedelta] = None,
         error: Optional[str] = None,
     ):
+        timeout = self.timeout if timeout is None else timeout
         self._wait_until(
             lambda: self.b.get_element_states(locator, THEN, "bool(value & (hidden | detached))"),
             f"Element '{locator.original_locator}' still visible after <TIMEOUT>.",
@@ -2573,6 +2702,7 @@ class SLtoB:
         timeout: Optional[timedelta] = None,
         error: Optional[str] = None,
     ):
+        timeout = self.timeout if timeout is None else timeout
         self._wait_until(
             lambda: self.b.get_element_states(locator, THEN, "bool(value & visible)"),
             f"Element '{locator.original_locator}' not visible after <TIMEOUT>.",
@@ -2587,6 +2717,7 @@ class SLtoB:
         timeout: Optional[timedelta] = None,
         message: Optional[str] = None,
     ):
+        timeout = self.timeout if timeout is None else timeout
         self._wait_until(
             lambda: expected in self.b.get_url(),
             f"Location did not contain '{expected}' in <TIMEOUT>.",
@@ -2601,6 +2732,7 @@ class SLtoB:
         timeout: Optional[timedelta] = None,
         message: Optional[str] = None,
     ):
+        timeout = self.timeout if timeout is None else timeout
         self._wait_until(
             lambda: location not in self.b.get_url(),
             f"Location did contain '{location}' in <TIMEOUT>.",
@@ -2615,6 +2747,7 @@ class SLtoB:
         timeout: Optional[timedelta] = None,
         message: Optional[str] = None,
     ):
+        timeout = self.timeout if timeout is None else timeout
         self._wait_until(
             lambda: expected == self.b.get_url(),
             f"Location did not become '{expected}' in <TIMEOUT>.",
@@ -2629,6 +2762,7 @@ class SLtoB:
         timeout: Optional[timedelta] = None,
         message: Optional[str] = None,
     ):
+        timeout = self.timeout if timeout is None else timeout
         self._wait_until(
             lambda: location != self.b.get_url(),
             f"Location is '{location}' in <TIMEOUT>.",
@@ -2643,6 +2777,7 @@ class SLtoB:
         timeout: Optional[timedelta] = None,
         error: Optional[str] = None,
     ):
+        timeout = self.timeout if timeout is None else timeout
         self._wait_until(
             lambda: self.page_contains(f"text={text}"),
             f"Text '{text}' did not appear in <TIMEOUT>.",
@@ -2658,6 +2793,7 @@ class SLtoB:
         error: Optional[str] = None,
         limit: Optional[int] = None,
     ):
+        timeout = self.timeout if timeout is None else timeout
         if limit is None:
 
             def func():
@@ -2684,6 +2820,7 @@ class SLtoB:
         timeout: Optional[timedelta] = None,
         error: Optional[str] = None,
     ):
+        timeout = self.timeout if timeout is None else timeout
         self._wait_until(
             lambda: not self.page_contains(f"text={text}"),
             f"Text '{text}' did not disappear in <TIMEOUT>.",
@@ -2699,6 +2836,7 @@ class SLtoB:
         error: Optional[str] = None,
         limit: Optional[int] = None,
     ):
+        timeout = self.timeout if timeout is None else timeout
         if limit is None:
 
             def func():

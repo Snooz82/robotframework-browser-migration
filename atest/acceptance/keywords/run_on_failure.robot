@@ -1,20 +1,23 @@
 *** Settings ***
-Suite Setup       Run Keywords    Go To Front Page    Set Info Loglevel
-Test Teardown     Register Keyword to Run On Failure    Nothing
-Suite Teardown    Set Debug Loglevel
-Resource          ../resource.robot
-Force Tags        Known Issue Internet Explorer
+Resource            ../resource.robot
+
+Suite Setup         Run Keywords    Go To Front Page    Set Info Loglevel
+Suite Teardown      Set Debug Loglevel
+Test Teardown       Register Keyword to Run On Failure    Nothing
+
+Test Tags           known issue internet explorer
+
 
 *** Variables ***
-${PAGE TITLE}     (root)/index.html
-${FAILURE MESSAGE}    Page should not have contained text 'needle'.
+${PAGE TITLE}           (root)/index.html
+${FAILURE MESSAGE}      Page should not have contained text 'needle'.
+
 
 *** Test Cases ***
 Run On Failure Keyword Only Called Once
-    [Setup]    Prefer Custom Keywords
     Set Test Variable    ${ON FAIL COUNT}    ${0}
     Register Keyword To Run On Failure    On Fail
-    Run Keyword And Ignore Error    Custom Selenium Keyword
+    Run Keyword And Ignore Error    Title Should Be    Nothing
     Should Be Equal    ${ON FAIL COUNT}    ${1}    On Failure Keyword called ${ON FAIL COUNT} times.
     [Teardown]    Set Library Search Order    SeleniumLibraryToBrowser
 
@@ -74,11 +77,12 @@ Run On Failure also fails
     ...    Page Should Not Contain    needle    loglevel=None
 
 Run On Failure With Default Keyword And Conflight With Keyword Names
-    [Documentation]    LOG 2.1    INFO REGEXP:  .*<a href=\\"selenium-screenshot.*\\.png\\"><img src=\\"selenium-screenshot.*\\.png\\" width=\\"800px\\"></a>.*
-    Register Keyword To Run On Failure     Capture Page Screenshot
+    [Documentation]    LOG 2.1    INFO REGEXP:    .*<a href=\\"selenium-screenshot.*\\.png\\"><img src=\\"selenium-screenshot.*\\.png\\" width=\\"800px\\"></a>.*
+    Register Keyword To Run On Failure    Capture Page Screenshot
     Run Keyword And Expect Error
     ...    ${FAILURE MESSAGE}
     ...    Page Should Not Contain    needle    loglevel=None
+
 
 *** Keywords ***
 On Fail

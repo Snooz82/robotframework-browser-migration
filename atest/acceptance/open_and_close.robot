@@ -1,7 +1,9 @@
 *** Settings ***
-Suite Teardown    Close All Browsers
-Resource          resource.robot
-Library           ../resources/testlibs/cache_error.py
+Resource            resource.robot
+Library             ../resources/testlibs/cache_error.py
+
+Suite Teardown      Close All Browsers
+
 
 *** Test Cases ***
 Browser Should Open And Close
@@ -76,14 +78,14 @@ Get Session Id
 Open Browser desired_capabilities As Dictionary
     ${caps}    Create Dictionary    foo=${True}
     Open Browser    ${ROOT}/forms/prefilled_email_form.html    ${BROWSER}
-     ...    remote_url=${REMOTE_URL}    desired_capabilities=${caps}
+    ...    remote_url=${REMOTE_URL}    desired_capabilities=${caps}
 
 When Closing Browsers Causes An Error
-    [Tags]    NoGrid
     [Documentation]
-    ...    FAIL       AttributeError: 'NoneType' object has no attribute 'quit'
+    ...    FAIL    AttributeError: 'NoneType' object has no attribute 'quit'
     ...    LOG 3:10    ERROR When closing browser, received exception: 'NoneType' object has no attribute 'quit'
     ...    LOG 3:11    ERROR When closing browser, received exception: 'NoneType' object has no attribute 'quit'
+    [Tags]    nogrid    robot:skip
     Open Browser    ${ROOT}/forms/prefilled_email_form.html    ${BROWSER}    Browser 1
     ...    remote_url=${REMOTE_URL}    desired_capabilities=${DESIRED_CAPABILITIES}
     Invalidate Driver

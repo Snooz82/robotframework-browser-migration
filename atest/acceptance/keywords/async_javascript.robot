@@ -1,8 +1,11 @@
 *** Settings ***
-Documentation     Tests asynchronous javascript
-Suite Teardown    Set Selenium Timeout    5 seconds
-Test Setup        Go To Page "javascript/dynamic_content.html"
-Resource          ../resource.robot
+Documentation       Tests asynchronous javascript
+
+Resource            ../resource.robot
+
+Suite Teardown      Set Selenium Timeout    5 seconds
+Test Setup          Go To Page "javascript/dynamic_content.html"
+
 
 *** Test Cases ***
 Should Not Timeout If Callback Invoked Immediately
@@ -13,15 +16,15 @@ Should Not Timeout If Callback Invoked Immediately
 
 Execute Async Javascript With ARGUMENTS and JAVASCRIPT Marker
     Execute Async Javascript
-    ...  ARGUMENTS
-    ...  123
-    ...  JAVASCRIPT
-    ...  alert(arguments[0]);
+    ...    ARGUMENTS
+    ...    123
+    ...    JAVASCRIPT
+    ...    alert(arguments[0]);
     Alert Should Be Present    123    timeout=10 s
 
 Execute Javascript with dictionary object
-    &{ARGS}=            Create Dictionary     key=value    number=${1}    boolean=${TRUE}
-    ${returned}    Execute Async Javascript      arguments[1](arguments[0]);    ARGUMENTS    ${ARGS}
+    &{ARGS} =    Create Dictionary    key=value    number=${1}    boolean=${TRUE}
+    ${returned} =    Execute Async Javascript    arguments[1](arguments[0]);    ARGUMENTS    ${ARGS}
     Should Be True    type($returned) == dict
     Should Be Equal    ${returned}[key]    value
     Should Be Equal    ${returned}[number]    ${1}
@@ -89,11 +92,11 @@ Should Timeout If Script Does Not Invoke Callback With Long Timeout
 
 Should Detect Page Loads While Waiting On An Async Script And Return An Error
     Set Selenium Timeout    0.5 seconds
-    ${status}    ${error}    Run Keyword And Ignore Error    Execute Async Javascript
+    ${status}    ${error} =    Run Keyword And Ignore Error    Execute Async Javascript
     ...    window.location = 'javascript/dynamic';
     Should Match Regexp    ${error}    (WebDriverException\:|JavascriptException\:)
 
 Should Catch Errors When Executing Initial Script
-    ${status}    ${error}    Run Keyword And Ignore Error    Execute Async Javascript
+    ${status}    ${error} =    Run Keyword And Ignore Error    Execute Async Javascript
     ...    throw Error('you should catch this!');
     Should Match Regexp    ${error}    (WebDriverException\:|JavascriptException\:)

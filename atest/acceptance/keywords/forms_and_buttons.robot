@@ -1,9 +1,12 @@
 *** Settings ***
-Test Setup        Go To Page "forms/named_submit_buttons.html"
-Resource          ../resource.robot
+Resource        ../resource.robot
+
+Test Setup      Go To Page "forms/named_submit_buttons.html"
+
 
 *** Variables ***
-${FORM SUBMITTED}    forms/submit.html
+${FORM SUBMITTED}       forms/submit.html
+
 
 *** Test Cases ***
 Submit Form
@@ -53,6 +56,7 @@ Click Image With Submit Type Images
     [Setup]    Go To Page "forms/form_with_image_submit.html"
     Click Image    robot.bmp
     Verify Location Is "${FORM SUBMITTED}"
+
 
 *** Keywords ***
 Value Should Be Cancel

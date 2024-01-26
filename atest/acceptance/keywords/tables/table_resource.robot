@@ -1,5 +1,6 @@
 *** Settings ***
-Resource          ../../resource.robot
+Resource    ../../resource.robot
+
 
 *** Keywords ***
 Run Table Keyword With CSS And XPath Locators

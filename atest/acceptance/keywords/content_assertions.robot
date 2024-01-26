@@ -1,40 +1,50 @@
 *** Settings ***
-Documentation     Tests contents
-Suite Setup       Set Selenium Timeout    1 seconds
-Test Setup        Go To Front Page
-Default Tags      assertions
-Resource          ../resource.robot
+Documentation       Tests contents
+
+Resource            ../resource.robot
+
+Suite Setup         Set Selenium Timeout    1 seconds
+Test Setup          Go To Front Page
+
+Default Tags        assertions
+
 
 *** Test Cases ***
 Title Should Be
-    [Tags]    NoGrid
     [Documentation]    LOG 1:5 Page title is '(root)/index.html'.
+    [Tags]    nogrid
     Title Should Be    (root)/index.html
     Run Keyword And Expect Error
     ...    Title should have been 'not a title' but was '(root)/index.html'.
     ...    Title Should Be    not a title
     Run Keyword And Expect Error
     ...    Page title was not expected
-    ...    Title Should Be    not a title   message=Page title was not expected
+    ...    Title Should Be    not a title    message=Page title was not expected
 
 Page Should Contain
-    [Tags]    NoGrid
     [Documentation]    The last step fails and doesn't contain the html content.
     ...    LOG 1:9 Current page contains text 'needle'.
     ...    LOG 2:9 INFO Current page contains text 'This is the haystack'.
     ...    LOG 3:18 FAIL Page should have contained text 'non existing text' but did not.
+    [Tags]    nogrid
     Page Should Contain    needle
     Page Should Contain    This is the haystack
-    Run Keyword And Expect Error    Page should have contained text 'non existing text' but did not.    Page Should Contain    non existing text
+    Run Keyword And Expect Error
+    ...    Page should have contained text 'non existing text' but did not.
+    ...    Page Should Contain
+    ...    non existing text
 
 Page Should Contain Using Default Custom Log Level
-    [Tags]    NoGrid
     [Documentation]    The Page Should Contains using default custom log level (that being
     ...    'TRACE' - noting the excluded second argument for the `Page Should Contain`
     ...    keyword) fails and the log contains the html content.
     ...    LOG 2:19 TRACE REGEXP: <html.*</html>
-    ${old_level}=  Set Log Level    TRACE
-    Run Keyword And Expect Error    Page should have contained text 'non existing text' but did not.    Page Should Contain    non existing text
+    [Tags]    nogrid
+    ${old_level}=    Set Log Level    TRACE
+    Run Keyword And Expect Error
+    ...    Page should have contained text 'non existing text' but did not.
+    ...    Page Should Contain
+    ...    non existing text
     [Teardown]    Set Log Level    ${old_level}
 
 Page Should Contain Numbers And String Should Be Same
@@ -48,37 +58,61 @@ Page Should Contain With Text Having Internal Elements
     Page Should Contain    Relative with text after
 
 Page Should Contain With Custom Log Level INFO
-    [Tags]    NoGrid
     [Documentation]    Html content is shown at the explicitly specified INFO level.
-    Run Keyword And Expect Error   Page should have contained text 'non existing text' but did not.    Page Should Contain    non existing text    INFO
+    [Tags]    nogrid
+    Run Keyword And Expect Error
+    ...    Page should have contained text 'non existing text' but did not.
+    ...    Page Should Contain
+    ...    non existing text
+    ...    INFO
 
 Page Should Contain With Custom Log Level WARN
-    [Tags]    NoGrid
     [Documentation]    Html content is shown at the explicitly specified WARN level.
-    Run Keyword And Expect Error  Page should have contained text 'non existing text' but did not.    Page Should Contain    non existing text    WARN
+    [Tags]    nogrid
+    Run Keyword And Expect Error
+    ...    Page should have contained text 'non existing text' but did not.
+    ...    Page Should Contain
+    ...    non existing text
+    ...    WARN
 
 Page Should Contain With Custom Log Level DEBUG
-    [Tags]    NoGrid
     [Documentation]    Html content is shown at the explicitly specified DEBUG level.
-    Run Keyword And Expect Error    Page should have contained text 'non existing text' but did not.   Page Should Contain    non existing text    DEBUG
+    [Tags]    nogrid
+    Run Keyword And Expect Error
+    ...    Page should have contained text 'non existing text' but did not.
+    ...    Page Should Contain
+    ...    non existing text
+    ...    DEBUG
 
 Page Should Contain With Custom Log Level TRACE
-    [Tags]    NoGrid
     [Documentation]    Html content is shown at the explicitly specified TRACE level.
+    [Tags]    nogrid
     Set Log Level    TRACE
-    Run Keyword And Expect Error    Page should have contained text 'non existing text' but did not.    Page Should Contain    non existing text    TRACE
+    Run Keyword And Expect Error
+    ...    Page should have contained text 'non existing text' but did not.
+    ...    Page Should Contain
+    ...    non existing text
+    ...    TRACE
     [Teardown]    Set Log Level    DEBUG
 
 Page Should Contain With Custom Log Level NONE
-    [Tags]    NoGrid
     [Documentation]    Html content is not shown because the loglevel is set to NONE.
-    Run Keyword And Expect Error   Page should have contained text 'non existing text' but did not.    Page Should Contain    non existing text    NONE
+    [Tags]    nogrid
+    Run Keyword And Expect Error
+    ...    Page should have contained text 'non existing text' but did not.
+    ...    Page Should Contain
+    ...    non existing text
+    ...    NONE
 
 Page Should Contain With Custom Log Level Below Current Log Level
-    [Tags]    NoGrid
     [Documentation]    Html content is not shown when custom log level is below curent log level.
-    ${old_level}=  Set Log Level    DEBUG
-    Run Keyword And Expect Error   Page should have contained text 'non existing text' but did not.    Page Should Contain    non existing text    TRACE
+    [Tags]    nogrid
+    ${old_level}=    Set Log Level    DEBUG
+    Run Keyword And Expect Error
+    ...    Page should have contained text 'non existing text' but did not.
+    ...    Page Should Contain
+    ...    non existing text
+    ...    TRACE
     [Teardown]    Set Log Level    ${old_level}
 
 Page Should Contain With Disabling Source Logging
@@ -94,15 +128,15 @@ Page Should Contain With Frames
     Page Should Contain    You're looking at right.
 
 Page Should Not Contain
-    [Tags]    NoGrid
     [Documentation]    Default log level does not have html output.
     ...    LOG 1:14 Current page does not contain text 'non existing text'.
+    [Tags]    nogrid
     Page Should Not Contain    non existing text
     Run Keyword And Expect Error    Page should not have contained text 'needle'.    Page Should Not Contain    needle
 
 Page Should Not Contain With Custom Log Level
-    [Tags]    NoGrid
     [Documentation]    LOG 1.1:13 DEBUG REGEXP: <html.*</html>
+    [Tags]    nogrid
     Run Keyword And Expect Error
     ...    Page should not have contained text 'needle'.
     ...    Page Should Not Contain    needle    DEBUG
@@ -150,70 +184,80 @@ Page Should Not Contain Element With Disabling Source Logging
 
 Element Should Contain
     Element Should Contain    some_id    This text is inside an identified element
-    Element Should Contain    some_id    THIS TEXT IS INSIDE AN IDENTIFIED ELEMENT  ignore_case=True
-    Element Should Contain    some_id    This text is inside an identified element  ignore_case=False
+    Element Should Contain    some_id    THIS TEXT IS INSIDE AN IDENTIFIED ELEMENT    ignore_case=True
+    Element Should Contain    some_id    This text is inside an identified element    ignore_case=False
     Run Keyword And Expect Error
     ...    Element 'some_id' should have contained text 'non existing text' but its text was 'This text is inside an identified element'.
-    ...    Element Should Contain    some_id    non existing text
+    ...    Element Should Contain
+    ...    some_id
+    ...    non existing text
     Run Keyword And Expect Error
     ...    Element with locator 'missing_id' not found.
     ...    Element Should Contain    missing_id    This should report missing element.
     Run Keyword And Expect Error
     ...    Element 'some_id' should have contained text 'THIS TEXT' but its text was 'This text is inside an identified element'.
-    ...    Element Should Contain    some_id    THIS TEXT    ignore_case=False
+    ...    Element Should Contain
+    ...    some_id
+    ...    THIS TEXT
+    ...    ignore_case=False
     Run Keyword And Expect Error
     ...    Element 'some_id' should have contained text 'foobar' but its text was 'This text is inside an identified element'.
-    ...    Element Should Contain    some_id    foobar    ignore_case=True
+    ...    Element Should Contain
+    ...    some_id
+    ...    foobar
+    ...    ignore_case=True
 
 Element Should Not Contain
     Element Should Not Contain    some_id    This text is not inside an identified element
-    Element Should Not Contain    some_id    This text is not inside an identified element  ignore_case=False
-    Element Should Not Contain    some_id    THIS TEXT is not inside an identified element  ignore_case=True
+    Element Should Not Contain    some_id    This text is not inside an identified element    ignore_case=False
+    Element Should Not Contain    some_id    THIS TEXT is not inside an identified element    ignore_case=True
     Element Should Not Contain    some_id    elementypo
     Run Keyword And Expect Error
     ...    Element 'some_id' should not contain text 'This text is inside an identified element' but it did.
     ...    Element Should Not Contain    some_id    This text is inside an identified element
     Run Keyword And Expect Error
     ...    Element 'some_id' should not contain text 'TEXT' but it did.
-    ...    Element Should Not Contain    some_id    TEXT  ignore_case=True
+    ...    Element Should Not Contain    some_id    TEXT    ignore_case=True
     Run Keyword And Expect Error
     ...    Element 'some_id' should not contain text 'text' but it did.
-    ...    Element Should Not Contain    some_id    text  ignore_case=False
+    ...    Element Should Not Contain    some_id    text    ignore_case=False
     Run Keyword And Expect Error
     ...    Element with locator 'missing_id' not found.
     ...    Element Should Not Contain    missing_id    This should report missing element.
 
 Element Text Should Be
     Element Text Should Be    some_id    This text is inside an identified element
-    Element Text Should Be    some_id    This TEXT IS INSIDE AN IDENTIFIED ELEMENT  ignore_case=True
+    Element Text Should Be    some_id    This TEXT IS INSIDE AN IDENTIFIED ELEMENT    ignore_case=True
     Run Keyword And Expect Error
     ...    The text of element 'some_id' should have been 'inside' but it was 'This text is inside an identified element'.
-    ...    Element Text Should Be    some_id    inside
+    ...    Element Text Should Be
+    ...    some_id
+    ...    inside
 
 Element Text Should Not Be
     Element Text Should Not Be    some_id    Foo This text is inside an identified element
-    Element Text Should Not Be    some_id    This TEXT IS INSIDE AN IDENTIFIED ELEMENT  ignore_case=False
-    Element Text Should Not Be    some_id    FOO This text is inside an identified element  ignore_case=True
+    Element Text Should Not Be    some_id    This TEXT IS INSIDE AN IDENTIFIED ELEMENT    ignore_case=False
+    Element Text Should Not Be    some_id    FOO This text is inside an identified element    ignore_case=True
     Run Keyword And Expect Error
     ...    The text of element 'some_id' was not supposed to be 'This text is inside an identified element'.
     ...    Element Text Should Not Be    some_id    This text is inside an identified element
     Run Keyword And Expect Error
     ...    The text of element 'some_id' was not supposed to be 'This text is inside an identified element'.
-    ...    Element Text Should Not Be    some_id    This text is inside an identified element  ignore_case=False
+    ...    Element Text Should Not Be    some_id    This text is inside an identified element    ignore_case=False
     Run Keyword And Expect Error
     ...    The text of element 'some_id' was not supposed to be 'THIS TEXT is inside an identified element'.
-    ...    Element Text Should Not Be    some_id    THIS TEXT is inside an identified element  ignore_case=True
+    ...    Element Text Should Not Be    some_id    THIS TEXT is inside an identified element    ignore_case=True
 
 Get Text
-    ${str} =    Get Text    some_id
+    ${str}=    Get Text    some_id
     Should Match    ${str}    This text is inside an identified element
     Run Keyword And Expect Error
     ...    Element with locator 'missing_id' not found.
     ...    Get Text    missing_id
 
 Page Should Contain Checkbox
-    [Tags]    NoGrid
     [Documentation]    LOG 1:9 Current page contains checkbox 'can_send_email'.
+    [Tags]    nogrid
     [Setup]    Go To Page "forms/prefilled_email_form.html"
     Page Should Contain Checkbox    can_send_email
     Page Should Contain Checkbox    xpath=//input[@type='checkbox' and @name='can_send_sms']
@@ -222,8 +266,8 @@ Page Should Contain Checkbox
     ...    Page Should Contain Checkbox    non-existing
 
 Page Should Not Contain Checkbox
-    [Tags]    NoGrid
     [Documentation]    LOG 1:9 Current page does not contain checkbox 'non-existing'.
+    [Tags]    nogrid
     [Setup]    Go To Page "forms/prefilled_email_form.html"
     Page Should Not Contain Checkbox    non-existing
     Run Keyword And Expect Error
@@ -313,8 +357,8 @@ Page Should Not Contain Text Field
     ...    Page Should Not Contain Text Field    website
 
 TextField Should Contain
-    [Tags]    NoGrid
     [Documentation]    LOG 1:13 Text field 'name' contains text ''.
+    [Tags]    nogrid
     [Setup]    Go To Page "forms/email_form.html"
     TextField Should contain    name    ${EMPTY}
     TextField Should contain    website    ${EMPTY}
@@ -330,8 +374,8 @@ TextField Should Contain
     ...    TextField Should contain    website    https://w3.org
 
 TextField Value Should Be
-    [Tags]    NoGrid
     [Documentation]    LOG 1:13 Content of text field 'name' is ''.
+    [Tags]    nogrid
     [Setup]    Go To Page "forms/email_form.html"
     textfield Value Should Be    name    ${EMPTY}
     Input Text    name    my name

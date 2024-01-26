@@ -1,4 +1,5 @@
 *** Settings ***
-Suite Setup       Open Browser To Start Page
-Suite Teardown    Close All Browsers
-Resource          ../resource.robot
+Resource            ../resource.robot
+
+Suite Setup         Open Browser To Start Page
+Suite Teardown      Close All Browsers

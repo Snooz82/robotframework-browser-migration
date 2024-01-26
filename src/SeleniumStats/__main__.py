@@ -27,7 +27,7 @@ class KeywordCall:
         return {"call_count": self.call_count, "parent_count": len(self.parents)}
 
 
-KEYWORD_CALLS = dict()
+KEYWORD_CALLS = {}
 
 
 class ResultAnalyzer(ResultVisitor):
@@ -53,7 +53,7 @@ class ResultAnalyzer(ResultVisitor):
                 KEYWORD_CALLS[kw_name].add(parent_hash)
 
     def end_total_statistics(self, stats):
-        kw_calls = dict()
+        kw_calls = {}
         for key in sorted(KEYWORD_CALLS.keys()):
             kw_calls[key] = KEYWORD_CALLS[key].to_dict()
         self.print_stats(kw_calls)

@@ -1,5 +1,6 @@
 *** Settings ***
-Resource          table_resource.robot
+Resource    table_resource.robot
+
 
 *** Test Cases ***
 Test negative index for CSS strategy in 'Table Row Should Contain'

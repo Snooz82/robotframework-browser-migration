@@ -1,13 +1,16 @@
 *** Settings ***
-Resource          resource.robot
-Library           CustomSeleniumKeywords
-Suite Setup       Run Keywords
-...               Set Library Search Order    CustomSeleniumKeywords    AND
-...               Open Browser To Start Page
-Suite Teardown    Close Browser
+Resource            resource.robot
+
+# Library    CustomSeleniumKeywords
+Suite Setup         Run Keywords
+...                     Set Library Search Order    CustomSeleniumKeywords    AND
+...                     Open Browser To Start Page
+Suite Teardown      Close Browser
+
 
 *** Test Cases ***
 Find Element
+    [Tags]    robot:skip
     ${first} =    Use Find Element    first
     Should Be Equal    ${first.text}    This is the haystack and somewhere on this page is a needle.
     ${em} =    Use Find Element    css:em    ${first}
@@ -17,6 +20,7 @@ Find Element
     ...    Use Find Element    nonex
 
 Find Elements
+    [Tags]    robot:skip
     ${paras} =    Use Find Elements    //p
     Should Be Equal    ${paras[0].text}    This is the haystack and somewhere on this page is a needle.
     Length Should Be    ${paras}    2

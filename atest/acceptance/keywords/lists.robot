@@ -1,7 +1,10 @@
 *** Settings ***
-Test Setup        Go To Page "forms/prefilled_email_form.html"
-Resource          ../resource.robot
-Force Tags        Known Issue Internet Explorer
+Resource        ../resource.robot
+
+Test Setup      Go To Page "forms/prefilled_email_form.html"
+
+Test Tags       known issue internet explorer
+
 
 *** Test Cases ***
 Get List Items From Single-Select List
@@ -54,12 +57,18 @@ List Selection Should Be
     List Selection Should Be    possible_channels    phone    email
     Run Keyword And Expect Error
     ...    List 'possible_channels' should have had selection ? Email | Telephone | Direct mail ? but selection was ? Email (email) | Telephone (phone) ?.
-    ...    List Selection Should Be    possible_channels    Email    Telephone    Direct mail
+    ...    List Selection Should Be
+    ...    possible_channels
+    ...    Email
+    ...    Telephone
+    ...    Direct mail
 
 List Selection Should Be When Extraneous Options Are Selected
     Run Keyword And Expect Error
     ...    List 'possible_channels' should have had selection ? email ? but selection was ? Email (email) | Telephone (phone) ?.
-    ...    List Selection Should Be    possible_channels    email
+    ...    List Selection Should Be
+    ...    possible_channels
+    ...    email
 
 List Selection Should Be When List Does Not Exist
     Run Keyword And Expect Error
@@ -67,26 +76,26 @@ List Selection Should Be When List Does Not Exist
     ...    List Selection Should Be    nonexisting    whatever
 
 UnSelect By Value Single Value From List
-    Unselect From List By Value     possible_channels    email
-    List Selection Should Be        possible_channels    Telephone
+    Unselect From List By Value    possible_channels    email
+    List Selection Should Be    possible_channels    Telephone
 
 UnSelect By Label Single Value From List
-    Unselect From List By Label     possible_channels    Email
-    List Selection Should Be        possible_channels    Telephone
+    Unselect From List By Label    possible_channels    Email
+    List Selection Should Be    possible_channels    Telephone
 
 UnSelecting Two Times Has No Effect
-    Unselect From List By Label     possible_channels    Email
-    List Selection Should Be        possible_channels    Telephone
-    Unselect From List By Label     possible_channels    Email
-    List Selection Should Be        possible_channels    Telephone
+    Unselect From List By Label    possible_channels    Email
+    List Selection Should Be    possible_channels    Telephone
+    Unselect From List By Label    possible_channels    Email
+    List Selection Should Be    possible_channels    Telephone
 
 Unselect works only for multiselect lists
     Run Keyword And Expect Error
     ...    Un-selecting options works only with multi-selection lists.
-    ...    Unselect From List By Label     preferred_channel    Email
-        Run Keyword And Expect Error
+    ...    Unselect From List By Label    preferred_channel    Email
+    Run Keyword And Expect Error
     ...    Un-selecting options works only with multi-selection lists.
-    ...    Unselect From List By Value     preferred_channel    Email
+    ...    Unselect From List By Value    preferred_channel    Email
 
 Unselect All From List
     [Documentation]    LOG 1 Unselecting all options from list 'possible_channels'.
@@ -105,10 +114,10 @@ Select From Single Selection List
     Select From List By Label    preferred_channel    Telephone
     # do something else... anything to ensure the list is really set as the next keyword will pass
     # if list item is highlighted but not selected
-    Unselect All From List       possible_channels
-    List Selection Should Be     preferred_channel    Telephone
+    Unselect All From List    possible_channels
+    List Selection Should Be    preferred_channel    Telephone
     Select From List By Label    preferred_channel    Direct mail
-    List Selection Should Be     preferred_channel    Direct mail
+    List Selection Should Be    preferred_channel    Direct mail
 
 Select Non-Existing Item From Single Selection List
     Run Keyword And Expect Error
@@ -138,9 +147,9 @@ Select From Multiselect List
     Select By Label And Verify Selection    possible_channels    Email    Email    Telephone
     Select By Value And Verify Selection    possible_channels    email    email    phone
     Select By Label And Verify Selection    possible_channels    Direct mail    Direct mail    Email    Telephone
-    Unselect All From List                  possible_channels
-    Select From List By Label               possible_channels    Direct mail    Telephone
-    List Selection Should Be                possible_channels    Telephone    Direct mail
+    Unselect All From List    possible_channels
+    Select From List By Label    possible_channels    Direct mail    Telephone
+    List Selection Should Be    possible_channels    Telephone    Direct mail
 
 Select All From List
     [Documentation]    LOG 1 Selecting all options from list 'interests'.
@@ -156,7 +165,9 @@ List Should Have No Selections
     Select All From List    interests
     Run Keyword And Expect Error
     ...    List 'interests' should have had no selection but selection was ? Males (males) | Females (females) | Others (others) ?.
-    ...    List Should Have No Selections    interests
+    ...    List Should Have No Selections
+    ...    interests
+
 
 *** Keywords ***
 Select By Label And Verify Selection

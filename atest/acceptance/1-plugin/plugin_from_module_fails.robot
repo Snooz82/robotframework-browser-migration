@@ -7,7 +7,6 @@ Importing SeleniumLibrary Should Fail If Plugin Is Not Found
     ...    SeleniumLibraryToBrowser
     ...    plugins=${CURDIR}/ModulePlugin.py
 
-
 SeleniumLibrary Open Browser Keyword Should Not Be Found
     [Documentation]    FAIL No keyword with name 'Open Browser' found.
     Open Browser

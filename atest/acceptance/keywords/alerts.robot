@@ -1,9 +1,12 @@
 *** Settings ***
-Force Tags        Known Issue Safari
-Suite Setup       Set Global Timeout    1 second
-Test Setup        Go To Page "javascript/alert.html"
-Suite Teardown    Restore Global Timeout
-Resource          ../resource.robot
+Resource            ../resource.robot
+
+Suite Setup         Set Global Timeout    1 second
+Suite Teardown      Restore Global Timeout
+Test Setup          Go To Page "javascript/alert.html"
+
+Test Tags           known issue safari
+
 
 *** Test Cases ***
 Handle Alert accepts by default
@@ -124,12 +127,13 @@ Handle Alert when popup window closes
     [Documentation]    Popup window is closed by javascript while
     ...    'Handle Alert' keyword is waiting for alert
     ...    FAIL GLOB: An exception occurred waiting for alert*
-    [Tags]  Triage
+    [Tags]    triage
     [Setup]    Go To Page "javascript/self_closing_popup.html"
     Click Button    Self Closing
-    ${handle} =    Switch Window   NEW
-    Handle Alert  timeout=10s
+    ${handle} =    Switch Window    NEW
+    Handle Alert    timeout=10s
     [Teardown]    Switch Window    ${handle}
+
 
 *** Keywords ***
 Wait For Title Change

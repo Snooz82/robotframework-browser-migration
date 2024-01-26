@@ -1,8 +1,11 @@
 *** Settings ***
-Documentation     Tests frames
-Test Setup        Go To Page "frames/frameset.html"
-Test Teardown     UnSelect Frame
-Resource          ../resource.robot
+Documentation       Tests frames
+
+Resource            ../resource.robot
+
+Test Setup          Go To Page "frames/frameset.html"
+Test Teardown       UnSelect Frame
+
 
 *** Test Cases ***
 Frame Should Contain
@@ -17,11 +20,11 @@ Frame Should Contain should also work with iframes
 Current Frame Should (Not) Contain
     Select Frame    left
     Current Frame Should Contain    This is LEFT side.
-    Current Frame Should Not Contain   RIGHT
+    Current Frame Should Not Contain    RIGHT
     Unselect Frame
     Select Frame    right
     Current Frame Should Contain    This is RIGHT side.
-    Current Frame Should Not Contain   LEFT
+    Current Frame Should Not Contain    LEFT
 
 Page Should Contain Text Within Frames
     Page Should contain    You're looking at right.

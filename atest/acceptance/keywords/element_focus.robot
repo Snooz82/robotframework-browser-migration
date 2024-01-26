@@ -1,7 +1,10 @@
 *** Settings ***
-Documentation     Tests Focus Verification and Wait for Focus
-Suite Setup       Open Browser To Start Page
-Resource          ../resource.robot
+Documentation       Tests Focus Verification and Wait for Focus
+
+Resource            ../resource.robot
+
+Suite Setup         Open Browser To Start Page
+
 
 *** Test Cases ***
 Should Be Focused

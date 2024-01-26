@@ -1,7 +1,10 @@
 *** Settings ***
-Test Setup        Go To Page "javascript/delayed_events.html"
-Resource          ../resource.robot
-Test Tags        Known Issue Internet Explorer
+Resource        ../resource.robot
+
+Test Setup      Go To Page "javascript/delayed_events.html"
+
+Test Tags       known issue internet explorer
+
 
 *** Test Cases ***
 Wait For Condition
@@ -12,8 +15,8 @@ Wait For Condition
     ...    Wait For Condition    return window.document.title == "Invalid"    ${0.1}
 
 Wait For Condition Comlext Wait
-    [Tags]
-    Wait For Condition    style = document.querySelector('#content').style; return style.background == 'red' && style.color == 'white'
+    Wait For Condition
+    ...    style = document.querySelector('#content').style; return style.background == 'red' && style.color == 'white'
 
 Wait For Condition requires `return`
     Run Keyword And Expect Error

@@ -1,9 +1,10 @@
 *** Variables ***
-${SERVER}=         localhost:7000
-${BROWSER}=        chrome
-${REMOTE_URL}=     ${NONE}
-${ROOT}=           http://${SERVER}/html
-${FRONT_PAGE}=     ${ROOT}/
+${SERVER}=          localhost:7000
+${BROWSER}=         chrome
+${REMOTE_URL}=      ${NONE}
+${ROOT}=            http://${SERVER}/html
+${FRONT_PAGE}=      ${ROOT}/
+
 
 *** Test Cases ***
 Importing SeleniumLibrary Should Fail If Plugin Is Not Found

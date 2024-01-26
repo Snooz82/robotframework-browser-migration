@@ -1,15 +1,19 @@
 *** Settings ***
-Documentation     Tests screenshots
-Suite Setup       Go To Page "links.html"
-Resource          ../resource.robot
-Force Tags        Known Issue Internet Explorer
+Documentation       Tests screenshots
+
+Resource            ../resource.robot
+
+Suite Setup         Go To Page "links.html"
+
+Test Tags           known issue internet explorer
+
 
 *** Test Cases ***
 Capture page screenshot to default location
-    [Tags]    NoGrid
     [Documentation]
     ...    LOG 1:5 </td></tr><tr><td colspan="3"><a href="selenium-screenshot-1.png"><img src="selenium-screenshot-1.png" width="800px"></a>
     ...    LOG 7:5 </td></tr><tr><td colspan="3"><a href="selenium-screenshot-2.png"><img src="selenium-screenshot-2.png" width="800px"></a>
+    [Tags]    nogrid
     [Setup]    Remove Files    ${OUTPUTDIR}/selenium-screenshot-*.png
     ${file} =    Capture Page Screenshot
     ${count} =    Count Files In Directory    ${OUTPUTDIR}    selenium-screenshot-*.png
@@ -82,58 +86,58 @@ Capture page screenshot with escaped braces
 
 Capture page screenshot computed name is unique
     [Setup]    Run Keywords
-    ...  Remove files  ${OUTPUTDIR}/unique-screenshot-*.png
-    ...  AND  Touch    ${OUTPUTDIR}/unique-screenshot-1.png
-    ...  AND  Touch    ${OUTPUTDIR}/unique-screenshot-2.png
+    ...    Remove files    ${OUTPUTDIR}/unique-screenshot-*.png
+    ...    AND    Touch    ${OUTPUTDIR}/unique-screenshot-1.png
+    ...    AND    Touch    ${OUTPUTDIR}/unique-screenshot-2.png
     # unique-screenshot-3 is purposely left out
-    ...  AND  Touch    ${OUTPUTDIR}/unique-screenshot-4.png
+    ...    AND    Touch    ${OUTPUTDIR}/unique-screenshot-4.png
     # we expect this to be screenshot 3
-    ${expected}=    Normalize Path    ${OUTPUTDIR}/unique-screenshot-3.png
-    ${actual}=    Capture page screenshot  ${OUTPUTDIR}/unique-screenshot-{index}.png
+    ${expected} =    Normalize Path    ${OUTPUTDIR}/unique-screenshot-3.png
+    ${actual} =    Capture page screenshot    ${OUTPUTDIR}/unique-screenshot-{index}.png
     Should be equal    ${actual}    ${expected}    values=False
-    ...  msg=Expected screenshot to be named '${expected}' but it was '${actual}'
+    ...    msg=Expected screenshot to be named '${expected}' but it was '${actual}'
     File Should Exist    ${expected}
     # since screenshot 4 exists, we expect this to be screenshot 5.
-    ${expected}=    Normalize Path    ${OUTPUTDIR}/unique-screenshot-5.png
-    ${actual}=    Capture page screenshot  ${OUTPUTDIR}/unique-screenshot-{index}.png
-    Should be equal  ${actual}  ${expected}  values=False
-    ...  msg=Expected screenshot to be named '${expected}' but it was '${actual}'
+    ${expected} =    Normalize Path    ${OUTPUTDIR}/unique-screenshot-5.png
+    ${actual} =    Capture page screenshot    ${OUTPUTDIR}/unique-screenshot-{index}.png
+    Should be equal    ${actual}    ${expected}    values=False
+    ...    msg=Expected screenshot to be named '${expected}' but it was '${actual}'
     File Should Exist    ${expected}
 
 Capture page screenshot advanced formatting name is unique
     [Setup]    Run Keywords
-    ...  Remove files  ${OUTPUTDIR}/advanced-screenshot-*.png
-    ...  AND  Touch    ${OUTPUTDIR}/advanced-screenshot-002.png
-    ...  AND  Touch    ${OUTPUTDIR}/advanced-screenshot-003.png
+    ...    Remove files    ${OUTPUTDIR}/advanced-screenshot-*.png
+    ...    AND    Touch    ${OUTPUTDIR}/advanced-screenshot-002.png
+    ...    AND    Touch    ${OUTPUTDIR}/advanced-screenshot-003.png
     # advanced-screenshot-4 is purposely left out
-    ...  AND  Touch    ${OUTPUTDIR}/advanced-screenshot-005.png
+    ...    AND    Touch    ${OUTPUTDIR}/advanced-screenshot-005.png
     # this should be screenshot 1, since it doesn't exist
-    ${expected}=    Normalize Path    ${OUTPUTDIR}/advanced-screenshot-001.png
-    ${actual}=    Capture page screenshot  ${OUTPUTDIR}/advanced-screenshot-{index:03}.png
-    Should be equal  ${actual}  ${expected}  values=False
-    ...  msg=Expected screenshot to be named '${expected}' but it was '${actual}'
+    ${expected} =    Normalize Path    ${OUTPUTDIR}/advanced-screenshot-001.png
+    ${actual} =    Capture page screenshot    ${OUTPUTDIR}/advanced-screenshot-{index:03}.png
+    Should be equal    ${actual}    ${expected}    values=False
+    ...    msg=Expected screenshot to be named '${expected}' but it was '${actual}'
     File Should Exist    ${expected}
     # since screenshot 1, 2, and 3 exists, the next should be screenshot 4.
-    ${expected}=    Normalize Path    ${OUTPUTDIR}/advanced-screenshot-004.png
-    ${actual}=    Capture page screenshot  ${OUTPUTDIR}/advanced-screenshot-{index:03}.png
+    ${expected} =    Normalize Path    ${OUTPUTDIR}/advanced-screenshot-004.png
+    ${actual} =    Capture page screenshot    ${OUTPUTDIR}/advanced-screenshot-{index:03}.png
     Should be equal    ${actual}    ${expected}    values=False
-    ...  msg=Expected screenshot to be named '${expected}' but it was '${actual}'
+    ...    msg=Expected screenshot to be named '${expected}' but it was '${actual}'
     File Should Exist    ${expected}
 
 Capture page screenshot explicit name will overwrite
     [Setup]    Run Keywords
-    ...  Remove files  ${OUTPUTDIR}/explicit-screenshot-*.png
-    ...  AND  Touch  ${OUTPUTDIR}/explicit-screenshot-1.png
+    ...    Remove files    ${OUTPUTDIR}/explicit-screenshot-*.png
+    ...    AND    Touch    ${OUTPUTDIR}/explicit-screenshot-1.png
     # make sure we are starting out with a single file in the output directory
     ${count} =    Count Files In Directory    ${OUTPUTDIR}    explicit-screenshot-*.png
-    Should be equal as numbers  ${count}  1  values=False
-    ...  msg=Expected to find one screenshot file, found ${count}
+    Should be equal as numbers    ${count}    1    values=False
+    ...    msg=Expected to find one screenshot file, found ${count}
     # Give an explicit filename that doesn't include the counter placeholder {index}
     Capture page screenshot    ${OUTPUTDIR}/explicit-screenshot-1.png
     # we expect the above to overwrite the existing file
     ${count} =    Count Files In Directory    ${OUTPUTDIR}    explicit-screenshot-*.png
-    Should be equal as numbers  ${count}  1  values=False
-    ...  msg=Expected to find one screenshot file, found ${count}
+    Should be equal as numbers    ${count}    1    values=False
+    ...    msg=Expected to find one screenshot file, found ${count}
     File Should Exist    ${OUTPUTDIR}/explicit-screenshot-1.png
 
 Capture page screenshot with closed browser

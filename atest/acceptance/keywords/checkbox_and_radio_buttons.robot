@@ -1,7 +1,10 @@
 *** Settings ***
-Documentation     Test checkboxes and radio buttons
-Test Setup        Go To Page "forms/prefilled_email_form.html"
-Resource          ../resource.robot
+Documentation       Test checkboxes and radio buttons
+
+Resource            ../resource.robot
+
+Test Setup          Go To Page "forms/prefilled_email_form.html"
+
 
 *** Test Cases ***
 Checkbox Should Be Selected

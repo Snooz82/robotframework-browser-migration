@@ -1,9 +1,12 @@
 *** Settings ***
-Documentation     This tests the RF conversion than alters
-Suite Setup       Set Global Timeout    1 second
-Test Setup        Go To Page "javascript/alert.html"
-Suite Teardown    Restore Global Timeout
-Resource          ../resource.robot
+Documentation       This tests the RF conversion than alters
+
+Resource            ../resource.robot
+
+Suite Setup         Set Global Timeout    1 second
+Suite Teardown      Restore Global Timeout
+Test Setup          Go To Page "javascript/alert.html"
+
 
 *** Test Cases ***
 Handle Alert Different Timeouts Types Str None

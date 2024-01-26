@@ -1,9 +1,12 @@
 *** Settings ***
-Documentation     Tests elements
-Suite Setup       Set Selenium Timeout    1 second
-Test Setup        Go To Page "links.html"
-Resource          ../resource.robot
-Library           String
+Documentation       Tests elements
+
+Resource            ../resource.robot
+Library             String
+
+Suite Setup         Set Selenium Timeout    1 second
+Test Setup          Go To Page "links.html"
+
 
 *** Test Cases ***
 Get Many Elements
@@ -11,7 +14,7 @@ Get Many Elements
     Length Should Be    ${links}    12
 
 Get Zero Elements
-    ${no_elements} =     Get WebElements    id:non_existing_elem
+    ${no_elements}=    Get WebElements    id:non_existing_elem
     Should Be Empty    ${no_elements}
 
 Get Web Element
@@ -62,30 +65,42 @@ Get Element Attribute
     Should Be Equal    ${class}    Second Class
 
 Get Element Attribute Value Should Be Should Be Succesfull
-    Element Attribute Value Should Be  link=Absolute external link  href  http://www.google.com/
-    Element Attribute Value Should Be  link=Absolute external link  nothere  ${None}
-
+    Element Attribute Value Should Be    link=Absolute external link    href    http://www.google.com/
+    Element Attribute Value Should Be    link=Absolute external link    nothere    ${None}
 
 Get Element Attribute And Element Attribute Value Should Be Should have same results
-    ${attribute_value}=  Get Element Attribute  css=#second_div  class
-    Element Attribute Value Should Be  css=#second_div  class  ${attribute_value}
+    ${attribute_value}=    Get Element Attribute    css=#second_div    class
+    Element Attribute Value Should Be    css=#second_div    class    ${attribute_value}
 
 Get Element Attribute Value Should Be Should Be Succesfull with non-ascii characters
-    Element Attribute Value Should Be  link=Link with Unicode äöüÄÖÜß  href  http://localhost:7000/html/index.html
+    Element Attribute Value Should Be
+    ...    link=Link with Unicode äöüÄÖÜß
+    ...    href
+    ...    http://localhost:7000/html/index.html
 
 Get Element Attribute Value Should Be Should Be Succesfull error and error messages
     Run Keyword And Expect Error
     ...    Test Fail Custom Message
-    ...    Element Attribute Value Should Be  id=image_id  href  http://non_existing.com  message=Test Fail Custom Message
+    ...    Element Attribute Value Should Be
+    ...    id=image_id
+    ...    href
+    ...    http://non_existing.com
+    ...    message=Test Fail Custom Message
     Run Keyword And Expect Error
     ...    Element 'id=image_id' attribute should have value 'http://non_existing.com' (str) but its value was 'None' (nonetype).
-    ...    Element Attribute Value Should Be  id=image_id  href  http://non_existing.com
+    ...    Element Attribute Value Should Be
+    ...    id=image_id
+    ...    href
+    ...    http://non_existing.com
     Run Keyword And Expect Error
     ...    Element with locator 'id=non_existing' not found.
-    ...    Element Attribute Value Should Be  id=non_existing  href  http://non_existing.com
+    ...    Element Attribute Value Should Be    id=non_existing    href    http://non_existing.com
     Run Keyword And Expect Error
     ...    Element 'link=Target opens in new window' attribute should have value 'http://localhost:7000/html/indéx.html' (str) but its value was 'http://localhost:7000/html/index.html' (str).
-    ...    Element Attribute Value Should Be  link=Target opens in new window  href  http://localhost:7000/html/indéx.html
+    ...    Element Attribute Value Should Be
+    ...    link=Target opens in new window
+    ...    href
+    ...    http://localhost:7000/html/indéx.html
 
 Get Horizontal Position
     ${pos}=    Get Horizontal Position    link=Link
@@ -102,35 +117,35 @@ Get Vertical Position
     ...    Get Vertical Position    non-existent
 
 Get Element Size
-    ${width}  ${height}=  Get Element Size  link=Link
-    Should be True  ${height} > 0
-    Should be True  ${width} > 0
+    ${width}    ${height}=    Get Element Size    link=Link
+    Should be True    ${height} > 0
+    Should be True    ${width} > 0
     Run Keyword And Expect Error
     ...    Element with locator 'non-existent' not found.
-    ...    Get Element Size  non-existent
+    ...    Get Element Size    non-existent
 
 Get Empty Element Size
-    [Tags]  Known Issue Internet Explorer
-    ${width}  ${height}=  Get Element Size  id=emptyDiv
+    [Tags]    known issue internet explorer
+    ${width}    ${height}=    Get Element Size    id=emptyDiv
     Should be Equal    ${height}    ${0}
 
 Cover Element
-    Cover Element  //img[@src="image.jpg"]
-    Element Should Not be Visible  //img[@src="image.jpg"]
-    Element Should be Visible  //div[@name="covered"]
+    Cover Element    //img[@src="image.jpg"]
+    Element Should Not be Visible    //img[@src="image.jpg"]
+    Element Should be Visible    //div[@name="covered"]
 
 Cover Element should cover all matching elements
-    Cover Element  //img[@src="image.jpg"]
-    Element Should Not be Visible  //img[@src="image.jpg"]
-    ${count}  Get Element Count  //div[@name="covered"]
-    Should Be equal As Integers  ${count}  2
+    Cover Element    //img[@src="image.jpg"]
+    Element Should Not be Visible    //img[@src="image.jpg"]
+    ${count}=    Get Element Count    //div[@name="covered"]
+    Should Be equal As Integers    ${count}    2
 
 Cover Element can cover just one element
-    Cover Element  (//img[@src="image.jpg"])[1]
-    Element Should be Visible  //img[@src="image.jpg"]
-    ${count}  Get Element Count  //div[@name="covered"]
-    Should Be equal As Integers  ${count}  1
+    Cover Element    (//img[@src="image.jpg"])[1]
+    Element Should be Visible    //img[@src="image.jpg"]
+    ${count}=    Get Element Count    //div[@name="covered"]
+    Should Be equal As Integers    ${count}    1
 
 Cover Elements should throw exception when locator is invalid
-    Run Keyword And Expect Error  No element with locator '//img?@src="inexistent"?' found.
-    ...  Cover Element  //img[@src="inexistent"]
+    Run Keyword And Expect Error    No element with locator '//img?@src="inexistent"?' found.
+    ...    Cover Element    //img[@src="inexistent"]

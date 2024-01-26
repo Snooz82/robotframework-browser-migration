@@ -1,10 +1,14 @@
 *** Settings ***
-Suite Teardown    Close All Browsers
-Library           ../resources/testlibs/get_selenium_options.py
-Resource          resource.robot
-Force Tags        Known Issue Firefox    Known Issue Safari    Known Issue Internet Explorer
-Documentation     Creating test which would work on all browser is not possible.
-...    These tests are for Chrome only.
+Documentation       Creating test which would work on all browser is not possible.
+...                 These tests are for Chrome only.
+
+Library             ../resources/testlibs/get_selenium_options.py
+Resource            resource.robot
+
+Suite Teardown      Close All Browsers
+
+Test Tags           robot:skip    known issue firefox    known issue safari    known issue internet explorer
+
 
 *** Test Cases ***
 Chrome Browser With Selenium Options As String
@@ -20,18 +24,26 @@ Chrome Browser With Selenium Options As String With Attribute As True
     ...    LOG 1:3 DEBUG GLOB: *"goog:chromeOptions"*
     ...    LOG 1:3 DEBUG GLOB: *args": ["--disable-dev-shm-usage"?*
     ...    LOG 1:3 DEBUG GLOB: *"--headless=new"*
-    Open Browser    ${FRONT PAGE}    ${BROWSER}    remote_url=${REMOTE_URL}
-    ...    desired_capabilities=${DESIRED_CAPABILITIES}    options=add_argument ( "--disable-dev-shm-usage" ) ; add_argument ( "--headless=new" )
+    Open Browser
+    ...    ${FRONT PAGE}
+    ...    ${BROWSER}
+    ...    remote_url=${REMOTE_URL}
+    ...    desired_capabilities=${DESIRED_CAPABILITIES}
+    ...    options=add_argument ( "--disable-dev-shm-usage" ) ; add_argument ( "--headless=new" )
     ...    executable_path=%{WEBDRIVERPATH}
 
 Chrome Browser With Selenium Options With Complex Object
-    [Tags]    NoGrid
     [Documentation]
     ...    LOG 1:3 DEBUG GLOB: *"goog:chromeOptions"*
     ...    LOG 1:3 DEBUG GLOB: *"mobileEmulation": {"deviceName": "Galaxy S5"*
     ...    LOG 1:3 DEBUG GLOB: *args": ["--disable-dev-shm-usage"?*
-    Open Browser    ${FRONT PAGE}    ${BROWSER}    remote_url=${REMOTE_URL}
-    ...    desired_capabilities=${DESIRED_CAPABILITIES}    options=add_argument ( "--disable-dev-shm-usage" ) ; add_experimental_option( "mobileEmulation" , { 'deviceName' : 'Galaxy S5'})
+    [Tags]    nogrid
+    Open Browser
+    ...    ${FRONT PAGE}
+    ...    ${BROWSER}
+    ...    remote_url=${REMOTE_URL}
+    ...    desired_capabilities=${DESIRED_CAPABILITIES}
+    ...    options=add_argument ( "--disable-dev-shm-usage" ) ; add_experimental_option( "mobileEmulation" , { 'deviceName' : 'Galaxy S5'})
     ...    executable_path=%{WEBDRIVERPATH}
 
 Chrome Browser With Selenium Options Object
@@ -44,11 +56,10 @@ Chrome Browser With Selenium Options Object
     ...    executable_path=%{WEBDRIVERPATH}
 
 Chrome Browser With Selenium Options Invalid Method
-    Run Keyword And Expect Error     AttributeError: 'Options' object has no attribute 'not_here_method'
+    Run Keyword And Expect Error    AttributeError: 'Options' object has no attribute 'not_here_method'
     ...    Open Browser    ${FRONT PAGE}    ${BROWSER}    remote_url=${REMOTE_URL}
     ...    desired_capabilities=${DESIRED_CAPABILITIES}    options=not_here_method("arg1")
     ...    executable_path=%{WEBDRIVERPATH}
-
 
 Chrome Browser With Selenium Options Argument With Semicolon
     [Documentation]

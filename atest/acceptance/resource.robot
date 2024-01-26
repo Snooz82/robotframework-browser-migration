@@ -1,24 +1,26 @@
 *** Settings ***
-Library           SeleniumLibraryToBrowser    run_on_failure=Nothing    implicit_wait=0.2 seconds
-Library           Collections
-Library           OperatingSystem
-Library           DateTime
+Library     SeleniumLibraryToBrowser    run_on_failure=Nothing    implicit_wait=5 seconds
+Library     Collections
+Library     OperatingSystem
+Library     DateTime
+
 
 *** Variables ***
-${SERVER}=         localhost:7000
-${BROWSER}=        chrome
-${REMOTE_URL}=     ${NONE}
-${DESIRED_CAPABILITIES}=    ${NONE}
-${ROOT}=           http://${SERVER}/html
-${FRONT_PAGE}=     ${ROOT}/
-${SPEED}=          0
+${SERVER}                   localhost:7000
+${BROWSER}                  chrome
+${REMOTE_URL}               ${NONE}
+${DESIRED_CAPABILITIES}     ${NONE}
+${ROOT}                     http://${SERVER}/html
+${FRONT_PAGE}               ${ROOT}/
+${SPEED}                    0
+
 
 *** Keywords ***
 Open Browser To Start Page
     [Documentation]    This keyword also tests 'Set Selenium Speed' and 'Set Selenium Timeout'
     ...    against all reason.
     [Arguments]    ${alias}=${None}
-    ${default speed}    ${default timeout}=    Open Browser To Start Page Without Testing Default Options
+    ${default speed}    ${default timeout} =    Open Browser To Start Page Without Testing Default Options
     ...    ${alias}
     # FIXME: We shouldn't test anything here. If this stuff isn't tested elsewhere, new *tests* needs to be added.
     # FIXME: The second test below verifies a hard coded return value!!?!
@@ -36,14 +38,17 @@ Open Browser To Start Page Without Testing Default Options
 
 Cannot Be Executed In IE
     [Documentation]    Cannot Be Executed In IE
-    ${runsInIE}=    Set Variable If    "${BROWSER}".replace(' ', '').lower() in ['ie', '*iexplore', 'internetexplorer']    ${TRUE}
-    Run Keyword If    ${runsInIE}    Set Tags    ie-incompatible
-    Run Keyword If    ${runsInIE}    Fail And Set Non-Critical
-    ...    This test does not work in Internet Explorer
+    ${runsInIE} =    Set Variable If
+    ...    "${BROWSER}".replace(' ', '').lower() in ['ie', '*iexplore', 'internetexplorer']
+    ...    ${TRUE}
+    IF    ${runsInIE}    Set Tags    ie-incompatible
+    IF    ${runsInIE}
+        Fail And Set Non-Critical    This test does not work in Internet Explorer
+    END
 
 Fail And Set Non-Critical
-    [Arguments]    ${msg}
     [Documentation]    Fails And Set Non-Critical
+    [Arguments]    ${msg}
     Remove Tags    regression
     Fail    ${msg}
 

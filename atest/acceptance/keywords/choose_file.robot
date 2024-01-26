@@ -1,6 +1,8 @@
 *** Settings ***
-Test Setup        Go To Page "forms/named_submit_buttons.html"
-Resource          ../resource.robot
+Resource        ../resource.robot
+
+Test Setup      Go To Page "forms/named_submit_buttons.html"
+
 
 *** Test Cases ***
 Choose File
@@ -18,7 +20,7 @@ Choose File And File Does Not Exist
     ...    Choose File    file_to_upload    ${CURDIR}${/}NotHere.txt
 
 Choose File And Folder
-    [Tags]    Known Issue Firefox
+    [Tags]    known issue firefox
     [Setup]    Go To Page "forms/file_upload_form.html"
     Choose File    file_to_upload    ${CURDIR}
     Textfield Value Should Be    file_to_upload    C:\\fakepath\\keywords
@@ -26,7 +28,7 @@ Choose File And Folder
 Choose File With Grid
     [Documentation]
     ...    LOG 1:6 DEBUG GLOB:    POST*/session/*/file*"file": "*
-    [Tags]    OnlyGrid
+    [Tags]    onlygrid
     [Setup]    Touch    ${CURDIR}${/}temp2.txt
     Choose File    file_to_upload    ${CURDIR}${/}temp2.txt
     Textfield Value Should Be    file_to_upload    C:\\fakepath\\temp2.txt
@@ -35,7 +37,7 @@ Choose File With Grid
 Choose File With Grid From Library Using SL choose_file method
     [Documentation]
     ...    LOG 3:6 DEBUG GLOB:    POST*/session/*/file*"file": "*
-    [Tags]    OnlyGrid
+    [Tags]    onlygrid
     [Setup]    Go To Page "forms/file_upload_form.html"
     Touch    ${CURDIR}${/}temp42.txt
     Import Library    ${CURDIR}/../../resources/testlibs/ChooseFileLib.py
@@ -46,22 +48,23 @@ Choose File With Grid From Library Using SL choose_file method
 Input Text Should Work Same Way When Not Using Grid
     [Documentation]
     ...    LOG 1:6 DEBUG GLOB:    POST*/session/*/clear {*
-    ...    LOG 1:9 DEBUG          Finished Request
+    ...    LOG 1:9 DEBUG    Finished Request
     ...    LOG 1:10 DEBUG GLOB:    POST*/session/*/value*"text": "*
-    ...    LOG 1:13 DEBUG         Finished Request
-    ...    LOG 1:14 DEBUG         NONE
-    [Tags]    NoGrid
+    ...    LOG 1:13 DEBUG    Finished Request
+    ...    LOG 1:14 DEBUG    NONE
+    [Tags]    nogrid
     [Setup]    Touch    ${CURDIR}${/}temp.txt
     Input Text    file_to_upload    ${CURDIR}${/}temp.txt
     Textfield Value Should Be    file_to_upload    C:\\fakepath\\temp.txt
     [Teardown]    Remove File    ${CURDIR}${/}temp.txt
 
 Input Text Should Work Same Way When Using Grid
-    [Tags]    OnlyGrid
+    [Tags]    onlygrid
     [Setup]    Touch    ${CURDIR}${/}temp3.txt
     Input Text    file_to_upload    ${CURDIR}${/}temp3.txt
     Textfield Value Should Be    file_to_upload    C:\\fakepath\\temp3.txt
     [Teardown]    Remove File    ${CURDIR}${/}temp3.txt
+
 
 *** Keywords ***
 Navigate To File Upload Form And Create Temp File To Upload

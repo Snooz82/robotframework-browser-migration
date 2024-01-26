@@ -1,5 +1,6 @@
 *** Settings ***
-Library    SeleniumLibraryToBrowser    plugins=${CURDIR}/PluginWithKwArgs.py;kw1=Text1;kw2=Text2
+Library     SeleniumLibraryToBrowser    plugins=${CURDIR}/PluginWithKwArgs.py;kw1=Text1;kw2=Text2
+
 
 *** Test Cases ***
 Testing Plugin With Keyword Arguments

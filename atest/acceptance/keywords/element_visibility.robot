@@ -1,9 +1,10 @@
 *** Settings ***
-Resource          ../resource.robot
+Resource    ../resource.robot
+
 
 *** Test Cases ***
 Wait Until Element Is Visible
-    [Tags]     Known Issue Internet Explorer
+    [Tags]    known issue internet explorer
     [Setup]    Go To Page "javascript/delayed_events.html"
     Run Keyword And Expect Error
     ...    Element 'hidden' not visible after 10 milliseconds.
@@ -17,12 +18,12 @@ Wait Until Element Is Visible
     ...    Wait Until Element Is Visible    invalid    0.1
 
 Wait Until Element Is Visible with locator and error arguments
-    [Tags]     Known Issue Internet Explorer
+    [Tags]    known issue internet explorer
     [Setup]    Go To Page "javascript/delayed_events.html"
     Wait Until Element Is Visible    hidden    error=My error message
 
 Wait Until Element Is Visible with locator only
-    [Tags]     Known Issue Internet Explorer
+    [Tags]    known issue internet explorer
     [Setup]    Go To Page "javascript/delayed_events.html"
     Wait Until Element Is Visible    hidden
 
@@ -45,4 +46,3 @@ Element Should Not Be Visible
     Run Keyword And Expect Error
     ...    The element 'i_am_visible' should not be visible, but it is.
     ...    Element Should Not Be Visible    i_am_visible
-

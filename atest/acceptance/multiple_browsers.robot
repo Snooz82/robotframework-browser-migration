@@ -1,9 +1,13 @@
 *** Settings ***
-Documentation     Several instances of browser
-Suite Setup       Open Two Browsers And Register Indexes
-Suite Teardown    Close All Browsers
-Resource          resource.robot
-Force Tags        Known Issue Internet Explorer
+Documentation       Several instances of browser
+
+Resource            resource.robot
+
+Suite Setup         Open Two Browsers And Register Indexes
+Suite Teardown      Close All Browsers
+
+Test Tags           known issue internet explorer
+
 
 *** Test Cases ***
 Last Opened Browser Should Be Active
@@ -40,6 +44,7 @@ Correct Error Message Should Be Given When Trying To Switch To Non-Existing Brow
     [Documentation]    Tests error message
     Run Keyword And Expect Error    No browser with index or alias 'non-existing' found.
     ...    Switch Browser    non-existing
+
 
 *** Keywords ***
 Open Two Browsers And Register Indexes
