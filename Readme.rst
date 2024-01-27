@@ -35,7 +35,7 @@ SeleniumLibraryToBrowser
 
 Please find the implemented keywords here in the Keyword_Documentation_.
 
-.. _Keyword_Documentation: http://robotframework-browser-migration.surge.sh/?tag=IMPLEMENTED
+.. _Keyword_Documentation: https://snooz82.github.io/robotframework-browser-migration/?tag=IMPLEMENTED
 
 Usage:
 
