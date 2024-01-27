@@ -3,6 +3,7 @@ import time
 from collections import namedtuple
 from contextlib import suppress
 from datetime import datetime, timedelta, timezone
+from enum import Enum, auto
 from itertools import count
 from pathlib import Path
 from typing import Any, ClassVar, Dict, Generator, List, Optional, Union
@@ -220,9 +221,149 @@ class V3Listener:
             self.depr = True
 
 
+class PriorityLibrary(Enum):
+    SeleniumLibraryToBrowser = auto()
+    Browser = auto()
+
+
 @library(converters={WebElement: WebElement.from_any})
 class SeleniumLibraryToBrowser(DynamicCore):
-    """General library documentation."""
+    """_*SeleniumLibraryToBrowser*_ is a compatibility layer between [https://robotframework.org/SeleniumLibrary|SeleniumLibrary] keyword design
+    and [https://robotframework-browser.org/|Robot Framework Browser]'s [https://playwright.dev|Playwright] based technology.
+
+    %TOC%
+
+    = Usage =
+
+    See `Importing` section for general instructions on how to use the library in Robot Framework.
+
+    The usage of this library needs some consideration. The library is designed to use [https://robotframework-browser.org|Browser] library internally.
+    Therefore you can either import [https://robotframework-browser.org|Browser] first or the library will do so itself.
+
+    = Overview =
+
+    _*SeleniumLibraryToBrowser*_ is an innovative project designed to bridge the gap between two prominent libraries in the Robot Framework community: [https://robotframework.org/SeleniumLibrary|SeleniumLibrary] and [https://robotframework-browser.org|Browser] library. This library is crafted to facilitate a smooth transition for users who wish to upgrade their web automation capabilities by leveraging the advanced features of the [https://robotframework-browser.org|Browser] library, while maintaining compatibility with the existing keyword design of [https://robotframework.org/SeleniumLibrary|SeleniumLibrary].
+
+    == Purpose ==
+
+    The primary objective of _*SeleniumLibraryToBrowser*_ is to enable seamless migration from [https://robotframework.org/SeleniumLibrary|SeleniumLibrary] to [https://robotframework-browser.org|Browser] library without the need for extensive rewrites of existing test suites. It recognizes the significant investment users have made in [https://robotframework.org/SeleniumLibrary|SeleniumLibrary] and respects the history and value it has brought to the Robot Framework community. This library is not intended as a replacement for [https://robotframework.org/SeleniumLibrary|SeleniumLibrary], but as a complementary tool that offers additional options and flexibility for test automation.
+
+    == Key Features ==
+
+    Compatibility with [https://robotframework.org/SeleniumLibrary|SeleniumLibrary] Keywords: _*SeleniumLibraryToBrowser*_ allows existing test scripts, which use [https://robotframework.org/SeleniumLibrary|SeleniumLibrary] keywords, to function with minimal changes, thereby reducing migration effort and time.
+
+    Leveraging [https://robotframework-browser.org|Browser] Library Advantages: Users can benefit from the speed, stability, and modern web technology support of the [https://robotframework-browser.org|Browser] library, especially in handling complex elements like WebComponents and ShadowDOM.
+
+    Coexistence and Support: This project emphasizes the coexistence and mutual respect between [https://robotframework.org/SeleniumLibrary|SeleniumLibrary] and [https://robotframework-browser.org|Browser] library. It is not a hostile takeover but a supportive extension, offering more choices to the Robot Framework community.
+
+    == Usage Scenario ==
+
+    _*SeleniumLibraryToBrowser*_ is ideal for teams and projects that have an extensive codebase using [https://robotframework.org/SeleniumLibrary|SeleniumLibrary] and are seeking to upgrade to the [https://robotframework-browser.org|Browser] library's advanced features without disrupting their existing test automation infrastructure. It is particularly beneficial for those who aim to gradually transition to the [https://robotframework-browser.org|Browser] library while continuing to develop and maintain their current test suites.
+
+    == Importing the Library ==
+
+    To use _*SeleniumLibraryToBrowser*_ in your Robot Framework projects, you can import it in your test suites as you would with any other library. Below is an example of how to import the library:
+
+    | ***** Settings *****
+    | Library    SeleniumLibraryToBrowser
+
+    This simple example may probably not be sufficient in practice.
+    Please see `Migration Guide` for more details on how to import the library.
+
+    == Configuration ==
+
+    Upon import, _*SeleniumLibraryToBrowser*_ initializes with default settings that ensure compatibility with [https://robotframework.org/SeleniumLibrary|SeleniumLibrary] keywords. However, users can configure it to take advantage of specific features of the [https://robotframework-browser.org|Browser] library as needed.
+
+    == Conclusion ==
+
+    _*SeleniumLibraryToBrowser*_ represents a thoughtful and user-centric approach to evolving test automation practices within the Robot Framework community. It respects the legacy of [https://robotframework.org/SeleniumLibrary|SeleniumLibrary] while embracing the future potential of the [https://robotframework-browser.org|Browser] library, offering a balanced solution for users at different stages of their automation journey.
+
+    = Limitations =
+
+    The _*SeleniumLibraryToBrowser*_ project, while offering numerous advantages, also comes with certain limitations. These are primarily due to the underlying technology differences between the Selenium and [https://robotframework-browser.org|Browser] libraries.
+
+    1. Get WebElement(s) Behavior:
+    - SeleniumLibrary: Returns the Selenium WebElement object, allowing for direct Python evaluations on this object.
+    - [https://robotframework-browser.org|Browser] Library (via _*SeleniumLibraryToBrowser*_): Returns a Selector instead, which can be used in subsequent keywords but does not support direct Python evaluations like the WebElement object.
+
+    2. Execute JavaScript Keyword:
+    - In _*SeleniumLibraryToBrowser*_, the `Execute JavaScript` keyword only accepts a `WebElement` as the first argument. This is a direct carry-over from the [https://robotframework.org/SeleniumLibrary|SeleniumLibrary]'s implementation and may limit the usage in contexts specific to the [https://robotframework-browser.org|Browser] library.
+
+    3. Implicit Wait and Selenium Timeout:
+    - Implicit Wait: In _*SeleniumLibraryToBrowser*_, Selenium's implicit wait is translated to Browser's general timeout setting.
+    - Selenium Timeout: This is used for all `Wait Until ...` keywords. It's important to note that the Selenium Timeout and the Implicit Wait do not cumulatively extend waiting periods.
+
+    4. Set Window Size and Maximize Browser Window:
+    - `Set Window Size`: This keyword behaves differently in _*SeleniumLibraryToBrowser*_ compared to [https://robotframework.org/SeleniumLibrary|SeleniumLibrary]. It only sets the viewport size, not the actual window size.
+    - `Maximize Browser Window`: This keyword sets the viewport to Full HD resolution. The underlying reason for this behavior is that Playwright, which powers the [https://robotframework-browser.org|Browser] library, cannot modify the actual browser size or position.
+
+    5. Open Browser and Create Webdriver:
+    - `Open Browser`: This keyword has only basic compatibility in _*SeleniumLibraryToBrowser*_. It does not fully utilize the advanced features available in the [https://robotframework-browser.org|Browser] library.
+    - `Create Webdriver`: This function is not implemented in _*SeleniumLibraryToBrowser*_. Users are advised to replace the `Open Browser` keyword with the `New Persistent Context` from the [https://robotframework-browser.org|Browser] library for enhanced functionality.
+
+    ---
+
+    *Note*: These limitations highlight the technology-specific differences and are crucial for users to understand when transitioning from [https://robotframework.org/SeleniumLibrary|SeleniumLibrary] to _*SeleniumLibraryToBrowser*_. Users should consider these factors during migration to ensure optimal use of the new library capabilities.
+
+    = Migration Guide =
+
+    == Introduction ==
+
+    _*SeleniumLibraryToBrowser*_ is designed to facilitate a smooth transition from [https://robotframework.org/SeleniumLibrary|SeleniumLibrary] to [https://robotframework-browser.org|Browser] library.
+    You can either use it as is alone or use [https://robotframework-browser.org|Browser] library together with _*SeleniumLibraryToBrowser*_.
+
+    In our estimation, stand-alone operation will realistically rarely be possible,
+    due to limitations of `Open Browser` and that `Create Webdriver` is not implemented.
+
+    Therefore you will need to use [https://robotframework-browser.org|Browser] library together with _*SeleniumLibraryToBrowser*_.
+    Please read `Importing` carefully to understand how to deal with library search order.
+
+    == Import Order ==
+
+    [https://robotframework-browser.org|Browser] library shall be imported first and _*SeleniumLibraryToBrowser*_ shall be configured to prioritize one library.
+
+    Example:
+    | ***** Settings *****
+    | Library    Browser
+    | Library    SeleniumLibraryToBrowser    prioritize_library=SeleniumLibraryToBrowser
+
+    This will ensure that _*SeleniumLibraryToBrowser*_ will be used for all keywords that are implemented in both libraries.
+    You can refactor your code to use [https://robotframework-browser.org|Browser] library keywords instead of _*SeleniumLibraryToBrowser*_ keywords by
+    prefixing the [https://robotframework-browser.org|Browser] keywords with ``Browser.`` like ``Browser.Get Text``.
+
+    Once all conflicting keywords are replaced by [https://robotframework-browser.org|Browser] library keywords,
+    you can switch the ``prioritize_library`` argument to ``prioritize_library=Browser``
+    so that [https://robotframework-browser.org|Browser] library keywords will be used instead of _*SeleniumLibraryToBrowser*_ keywords.
+
+    == Keyword Conflicts ==
+
+    Obviously all _*SeleniumLibraryToBrowser*_ keywords do conflict with [https://robotframework.org/SeleniumLibrary|SeleniumLibrary] and these libraries can not be used together.
+    There are also some keywords that do conflict with [https://robotframework-browser.org|Browser] library keywords.
+
+    The following keywords are affected:
+    - `Add Cookie`
+    - `Close Browser`
+    - `Delete All Cookies`
+    - `Drag And Drop`
+    - `Get Browser Ids`
+    - `Get Cookie`
+    - `Get Cookies`
+    - `Get Element Count`
+    - `Get Text`
+    - `Get Title`
+    - `Go Back`
+    - `Go To`
+    - `Open Browser`
+    - `Press Keys`
+    - `Register Keyword To Run On Failure`
+    - `Switch Browser`
+    - `Wait For Condition`
+
+    Please see `Importing` section for more information on how to resolve these conflicts with prioritizing libraries.
+
+
+
+    """
 
     ROBOT_LIBRARY_SCOPE = "GLOBAL"
     ROBOT_LIBRARY_VERSION = __version__
@@ -237,9 +378,40 @@ class SeleniumLibraryToBrowser(DynamicCore):
         event_firing_webdriver: Optional[str] = None,
         page_load_timeout=timedelta(minutes=5),
         *,
-        browser_args: Optional[List[str]] = None,
+        prioritize_library: Optional[PriorityLibrary] = None,
+        **browser_args: Optional[Dict],
     ):
-        """Library init doc."""
+        """_*SeleniumLibraryToBrowser*_ uses Robot Framework [https://robotframework-browser.org|Browser] library internally.
+
+        Therefore it is required to import [https://robotframework-browser.org|Browser] library either before this library,
+        or _*SeleniumLibraryToBrowser*_ will import [https://robotframework-browser.org|Browser] library itself.
+        You shall not import [https://robotframework-browser.org|Browser] library after.
+
+        If you plan to use [https://robotframework-browser.org|Browser] keywords as well as _*SeleniumLibrary(ToBrowser)*_ keywords,
+        you have to decide if you want to prioritize [https://robotframework-browser.org|Browser] library or _*SeleniumLibraryToBrowser*_.
+        Both Libraries do have some keywords with the same name, but different functionality,
+        which would cause conflicts, if no library search order is set.
+        See `Keyword Conflicts` for more information.
+
+        Therefore you can either set the library search order yourself,
+        or let _*SeleniumLibraryToBrowser*_ do it for you, which would be recommended.
+        Use the argument ``prioritize_library`` to set which ones keywords should be prioritized.
+        If one library is prioritized, no keyword conflicts will occur during runtime.
+        However most IDEs may still report these keywords as conflicts which can be mitigated by
+        using the library name as prefix like ``Browser.Get Text``.
+
+        | =Arguments= | =Description= |
+        | ``timeout`` | This timeout is used by all ``Wait Until ...`` keywords as a default waiting time. |
+        | ``implicit_wait`` | This timeout sets the Browser timeout which is used to wait until elements get actionable or visible. |
+        | ``run_on_failure`` | This keyword is executed when a SeleniumLibraryToBrowser keyword fails. Arguments are not possible. |
+        | ``screenshot_root_directory`` | This directory is used to store screenshots. If not set, the log directory is used. |
+        | ``plugins`` | *NOT IMPLEMENTED* Because _*SeleniumLibraryToBrowser*_ works internally totally different as SeleniumLibrary, it can obviously not use any SeleniumLibrary plugins. |
+        | ``event_firing_webdriver`` | *NOT IMPLEMENTED* Because _*SeleniumLibraryToBrowser*_ works internally totally different as SeleniumLibrary, it can not use any SeleniumLibrary event_firing_webdriver. |
+        | ``page_load_timeout`` | This timeout is used by `Open Browser`, `Go To`, `Reload` keyword as timeout for the page loading. |
+        | ``prioritize_library`` | This argument can be used to set which library should be prioritized. See `Keyword Conflicts` for more information. |
+        | ``browser_args`` | All other named arguments will be used to hand over to [https://robotframework-browser.org|Browser] library if it has not been imported before. |
+
+        """
         self.sl2b = SLtoB(
             timeout=timeout,
             implicit_wait=implicit_wait,
@@ -247,6 +419,7 @@ class SeleniumLibraryToBrowser(DynamicCore):
             browser_args=browser_args,
             library=self,
             page_load_timeout=page_load_timeout,
+            prioritize_library=prioritize_library,
         )
         self.run_on_failure_keyword = self.sl2b.resolve_keyword(run_on_failure)
         components = [self.sl2b]
@@ -350,22 +523,26 @@ class SLtoB:
         timeout=timedelta(seconds=5.0),
         implicit_wait=timedelta(seconds=10.0),
         screenshot_root_directory: Optional[str] = None,
-        browser_args: Optional[List[str]] = None,
+        browser_args: Optional[Dict] = None,
         library: SeleniumLibraryToBrowser = None,
         page_load_timeout=timedelta(minutes=5),
+        prioritize_library: Optional[PriorityLibrary] = None,
     ):
         self.timeout = timeout
         self.screenshot_root_directory = screenshot_root_directory
         self.library = library
         self.page_load_timeout = page_load_timeout
         self._browser: Optional[Browser] = None
-        self._browser_args = browser_args or []
+        self._browser_args = browser_args or {}
         self._context_indexes = {}
         self._context_aliases = {}
         self._browser_index = count(1)
         self._context_page_catalog = {}
         self._selenium_speed = timedelta(seconds=0.0)
-        self.b.set_browser_timeout(implicit_wait, scope=Scope.Global)
+        self._implicit_wait = implicit_wait
+        self.prioritize_library = prioritize_library
+        if prioritize_library and BuiltIn().robot_running:
+            _b = self.b
 
     @property
     def implicit_wait(self):
@@ -377,7 +554,7 @@ class SLtoB:
         return self._selenium_speed
 
     @selenium_speed.setter
-    def selenium_speed(self, value: Union[int, float, str, timedelta]):
+    def selenium_speed(self, value: Union[float, str, timedelta]):
         if isinstance(value, (int, float)):
             self._selenium_speed = timedelta(seconds=value)
         elif isinstance(value, str):
@@ -390,14 +567,33 @@ class SLtoB:
     @property
     def b(self) -> Browser:
         if self._browser is None:
-            # BuiltIn().import_library(name="Browser", *self._browser_args)
-            try:
-                self._browser = BuiltIn().get_library_instance("Browser")
-            except Exception:
-                self._browser = Browser(*self._browser_args)
-            self._browser.set_strict_mode(False, Scope.Global)
-            self._browser._auto_closing_level = AutoClosingLevel.MANUAL
-            # BuiltIn().set_library_search_order("SeleniumLibraryToBrowser")
+            self._browser = None
+            self._browser_name = None
+            self._sl2b_name = None
+            for name, lib in BuiltIn().get_library_instance(all=True).items():
+                if isinstance(lib, Browser):
+                    self._browser = lib
+                    self._browser_name = name
+                elif isinstance(lib, SeleniumLibraryToBrowser):
+                    self._sl2b_name = name
+            if self._browser is None:
+                self._browser_args["timeout"] = self._implicit_wait
+                self._browser = Browser(**self._browser_args)
+                self._browser.set_strict_mode(False, Scope.Global)
+                self._browser._auto_closing_level = AutoClosingLevel.MANUAL
+                self.b.set_browser_timeout(self.implicit_wait, scope=Scope.Global)
+            if self.prioritize_library == PriorityLibrary.Browser:
+                BuiltIn().set_library_search_order(self._browser_name or "Browser")
+            elif self.prioritize_library == PriorityLibrary.SeleniumLibraryToBrowser:
+                BuiltIn().set_library_search_order(self._sl2b_name or "SeleniumLibraryToBrowser")
+        elif (
+            self._sl2b_name is not None
+            and self.prioritize_library == PriorityLibrary.SeleniumLibraryToBrowser
+        ):
+            for name, lib in BuiltIn().get_library_instance(all=True).items():
+                if isinstance(lib, SeleniumLibraryToBrowser):
+                    self._sl2b_name = name
+                    BuiltIn().set_library_search_order(self._sl2b_name)
         return self._browser
 
     @property
@@ -546,7 +742,7 @@ class SLtoB:
         ...
 
     @keyword(tags=("IMPLEMENTED",))
-    def assign_id_to_element(self, locator: WebElement, id: str):
+    def assign_id_to_element(self, locator: WebElement, id: str):  # noqa: A002
         self.b.evaluate_javascript(locator, f"element => element.id = '{id}'")
 
     @keyword(tags=("IMPLEMENTED",))
@@ -729,9 +925,9 @@ class SLtoB:
         if not context_ids:
             return self.close_all_browsers()
         current_id = context_ids[0]
-        for index, id in self._context_indexes.items():
-            if id == current_id:
-                self._context_page_catalog.pop(id)
+        for index, ctx_id in self._context_indexes.items():
+            if ctx_id == current_id:
+                self._context_page_catalog.pop(ctx_id)
                 self._context_indexes.pop(index)
                 for alias, idx in self._context_aliases.items():
                     if idx == index:
@@ -1129,8 +1325,8 @@ class SLtoB:
         if context.upper() == "ALL":
             return list(self._get_all_page_ids())
 
-        id = self._get_pw_context_id(context)
-        org_context = self.b.switch_context(id, browser=SelectionType.ALL)
+        ctx_id = self._get_pw_context_id(context)
+        org_context = self.b.switch_context(ctx_id, browser=SelectionType.ALL)
         try:
             return self._get_current_page_ids()
         finally:
@@ -1172,12 +1368,12 @@ class SLtoB:
             int_ctx = int(context)
         except ValueError:
             int_ctx = None
-        id = self._context_indexes.get(int_ctx, None) or self._context_indexes.get(
+        ctx_id = self._context_indexes.get(int_ctx, None) or self._context_indexes.get(
             self._context_aliases.get(context), None
         )
-        if id is None:
+        if ctx_id is None:
             raise WindowNotFound(f"Non-existing index or alias '{context}'.")
-        return id
+        return ctx_id
 
     @keyword(tags=("IMPLEMENTED",))
     def get_selected_list_label(self, locator: WebElement):
@@ -1413,12 +1609,13 @@ class SLtoB:
 
     @keyword(tags=("IMPLEMENTED",))
     def input_text(self, locator: WebElement, text: str, clear: bool = True):
-        if (
-            self.b.get_property(locator, "nodeName") == "INPUT"
-            and self.b.get_attribute(locator, "type").lower() == "file"
-        ):
-            self.choose_file(locator, text)
-            return
+        if self.b.get_property(locator, "nodeName") == "INPUT":
+            try:
+                is_file = self.b.get_attribute(locator, "type").lower() == "file"
+            except AttributeError:
+                is_file = False
+            if is_file:
+                return self.choose_file(locator, text)
         self.b.press_keys(locator, "End")
         try:
             self.b.type_text(locator, text, clear=clear)
@@ -1560,8 +1757,8 @@ class SLtoB:
     ):
         if alias in self._context_aliases:
             idx = self._context_aliases[alias]
-            id = self._context_indexes[idx]
-            self.b.switch_context(id, browser=SelectionType.ALL)
+            ctx_id = self._context_indexes[idx]
+            self.b.switch_context(ctx_id, browser=SelectionType.ALL)
             self.b.go_to(url)
             return idx
         browser_enum, headless = BROWSERS.get(browser, (SupportedBrowsers.chromium, False))
@@ -1926,7 +2123,7 @@ class SLtoB:
             self.press_keys(locator, key)
 
     def _map_ascii_key_code_to_key(self, key_code):
-        map = {
+        key_map = {
             0: Keys.NULL,
             8: Keys.BACK_SPACE,
             9: Keys.TAB,
@@ -1945,7 +2142,7 @@ class SLtoB:
             61: Keys.EQUALS,
             127: Keys.DELETE,
         }
-        key = map.get(key_code)
+        key = key_map.get(key_code)
         if key is None:
             key = chr(key_code)
         return key
@@ -2248,12 +2445,12 @@ class SLtoB:
             int_index = int(index_or_alias)
         except ValueError:
             int_index = None
-        id = self._context_indexes.get(int_index, None) or self._context_indexes.get(
+        ctx_id = self._context_indexes.get(int_index, None) or self._context_indexes.get(
             self._context_aliases.get(index_or_alias), None
         )
-        if id is None:
+        if ctx_id is None:
             raise WindowNotFound(f"No browser with index or alias '{index_or_alias}' found.")
-        return self.b.switch_context(id, browser=SelectionType.ALL)
+        return self.b.switch_context(ctx_id, browser=SelectionType.ALL)
 
     @keyword(tags=("IMPLEMENTED",))
     def switch_window(
@@ -2273,10 +2470,8 @@ class SLtoB:
                         if locator.upper() == "CURRENT":
                             return current_page_id
                         if locator.upper() == "NEW":
-                            id = self._get_pw_context_id(browser)
-                            # if id != self._get_current_context_id:
-                            #     self.b.switch_context(id, browser=SelectionType.ALL)
-                            self.b.switch_page("NEW", context=id, browser=SelectionType.ALL)
+                            ctx_id = self._get_pw_context_id(browser)
+                            self.b.switch_page("NEW", context=ctx_id, browser=SelectionType.ALL)
                             return current_page_id
                         locator_match = re.match(
                             r"(?P<strategy>name|title|url|default)[:=](?P<locator>.*)", locator
