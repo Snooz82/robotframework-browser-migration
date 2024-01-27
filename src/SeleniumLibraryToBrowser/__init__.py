@@ -235,10 +235,21 @@ class SeleniumLibraryToBrowser(DynamicCore):
 
     = Usage =
 
-    See `Importing` section for general instructions on how to use the library in Robot Framework.
+    The usage of this library needs some consideration. 
+    The library is designed to use [https://robotframework-browser.org|Browser] library internally and be mostly compatible to [https://robotframework.org/SeleniumLibrary|SeleniumLibrary]'s keywords.
+    However some keywords are impossible to be implement with [https://playwright.dev|Playwright], like all Alert handling keywords.
 
-    The usage of this library needs some consideration. The library is designed to use [https://robotframework-browser.org|Browser] library internally.
-    Therefore you can either import [https://robotframework-browser.org|Browser] first or the library will do so itself.
+    All *IMPLEMENTED* keywords are tagged as such and can be filtered in the keyword list.
+
+    == Unimplemented Keywords ==
+
+    This library cause a test to be skipped, when it calls an unimplemented keyword.
+
+    Also all unimplemented keywords are marked as *DEPRECATED*, so that IDEs can mark them.
+
+    == Dry Run ==
+
+    If a dry run is executed, all keywords that do exist but are not implemented will cause a fail.
 
     = Overview =
 
