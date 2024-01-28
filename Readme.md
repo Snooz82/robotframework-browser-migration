@@ -199,7 +199,7 @@ The Browser-Team
 ## Special Thanks
 
 First i want to thank all contributors of SeleniumLibrary, who ensured maintenance and development of this library for years.
-Specifially i want to thank Tatu Aalto (@aaltat) and Ed Manlove (@emanlove) for their work on SeleniumLibrary.
+Specifially i want to thank [Tatu Aalto](https://github.com/aaltat) and [Ed Manlove](https://github.com/emanlove) for their work on SeleniumLibrary.
 
 I also want to thank the [Robot Framework Foundation](https://robotframework.org/foundation/) for their support and the
 funding that made it possible to bring this project to this point.
