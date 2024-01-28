@@ -35,4 +35,5 @@ setup(
     ],
     python_requires=">=3.6",
     install_requires=["robotframework >= 5.0"],
+    entry_points={"console_scripts": ["SeleniumStats = SeleniumStats.__main__:main"]},
 )

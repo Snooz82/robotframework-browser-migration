@@ -5,13 +5,21 @@ import sys
 
 from robot.api import ExecutionResult, ResultVisitor
 from robot.model import TestCase, TestSuite
+from robot.result import Keyword
+from robot.version import get_version, get_full_version
 
 try:
     from SeleniumLibraryToBrowser import SeleniumLibraryToBrowser
 
     sl2b = SeleniumLibraryToBrowser()
+    sl2b_keywords = [
+        kw.replace(" ", "").replace("_", "").lower() for kw in sl2b.get_keyword_names()
+    ]
 except ImportError:
     sl2b = None
+    sl2b_keywords = []
+
+RF_MAJOR_VERSION = int(get_version().split(".")[0])
 
 
 class KeywordCall:
@@ -38,19 +46,26 @@ class ResultAnalyzer(ResultVisitor):
             # the hashes just allows us to count the different calling parents.
             # We even do not store the entire hash, but just 16 bytes.
             # it will never be possible to get the names back
-            if isinstance(keyword.parent, (TestCase, TestSuite)):
-                parent_hash = hashlib.sha3_512(keyword.parent.longname.encode("UTF-8")).hexdigest()[
-                    16:32
-                ]
+            parent = self.get_keyword_or_test_parent(keyword)
+            if isinstance(parent, (TestCase, TestSuite)):
+                parent_hash = hashlib.sha3_512(parent.longname.encode("UTF-8")).hexdigest()[16:32]
             else:
                 parent_hash = hashlib.sha3_512(
-                    f"{keyword.parent.libname}{keyword.parent.name}".encode()
+                    f"{parent.libname}{parent.name}".encode()
                 ).hexdigest()[16:32]
-            kw_name = keyword.name[len(keyword.libname) + 1 :]
+            if RF_MAJOR_VERSION >= 7:
+                kw_name = keyword.name
+            else:
+                kw_name = keyword.name[len(keyword.libname) + 1 :]
             if kw_name not in KEYWORD_CALLS:
                 KEYWORD_CALLS[kw_name] = KeywordCall(parent_hash)
             else:
                 KEYWORD_CALLS[kw_name].add(parent_hash)
+
+    def get_keyword_or_test_parent(self, keyword):
+        if not isinstance(keyword.parent, (Keyword, TestCase, TestSuite)):
+            return self.get_keyword_or_test_parent(keyword.parent)
+        return keyword.parent
 
     def end_total_statistics(self, stats):
         kw_calls = {}
@@ -80,19 +95,23 @@ class ResultAnalyzer(ResultVisitor):
         print(f'| {"Keyword".ljust(longest_keyword, " ")} | count | parents | migration status |')
         print(f'+-{"".ljust(longest_keyword, "-")       }-+-------+---------+------------------+')
         for kw_name in kw_calls:
-            implemented = (
-                sl2b.keyword_implemented(kw_name.lower().replace(" ", "_")) if sl2b else False
-            )
+            if sl2b is not None:
+                if kw_name.replace(" ", "").lower() not in sl2b_keywords:
+                    continue
+                implemented = sl2b.keyword_implemented(kw_name.lower().replace(" ", "_"))
+                msg = f' {str((not implemented) * "missing").ljust(16, " ")} |'
+            else:
+                msg = f' {"unknown".ljust(16, " ")} |'
             print(
                 f'| {kw_name.ljust(longest_keyword , " ")} |'
                 f' {str(kw_calls[kw_name]["call_count"]).ljust(5," ")} |'
                 f' {str(kw_calls[kw_name]["parent_count"]).ljust(7, " ")} |'
-                f' {str((not implemented) * "missing").ljust(16, " ")} |'
+                f"{msg}"
             )
         print(f'+-{"".ljust(longest_keyword, "-")}-+-------+---------+------------------+')
 
 
-if __name__ == "__main__":
+def main():
     if len(sys.argv) > 1:
         original_output_xml = sys.argv[1]
         if not os.path.isfile(original_output_xml):
@@ -101,8 +120,9 @@ if __name__ == "__main__":
         ExecutionResult(original_output_xml).visit(ResultAnalyzer())
     else:
         print(
-            "Use the path to a output.xml as first arguemnt.  Example:  python -m SeleniumStats ../output.xml"
+            "Use the path to a output.xml as first argument.  Example:  python -m SeleniumStats ../output.xml"
         )
 
-    # normalized_keywords = [
-    # kw.lower().replace("_", "") for kw in sl2b.get_keyword_names() if "IMPLEMENTED" not in sl2b.get_keyword_tags(kw)]
+
+if __name__ == "__main__":
+    main()

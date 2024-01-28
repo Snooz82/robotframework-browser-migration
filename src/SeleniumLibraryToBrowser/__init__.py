@@ -68,7 +68,7 @@ DEFAULT_FILENAME_ELEMENT = "selenium-element-screenshot-{index}.png"
 EMBED = "EMBED"
 
 
-__version__ = "0.8.0"
+__version__ = "1.0.0"
 
 
 class CookieInformation:
@@ -235,7 +235,7 @@ class SeleniumLibraryToBrowser(DynamicCore):
 
     = Usage =
 
-    The usage of this library needs some consideration. 
+    The usage of this library needs some consideration.
     The library is designed to use [https://robotframework-browser.org|Browser] library internally and be mostly compatible to [https://robotframework.org/SeleniumLibrary|SeleniumLibrary]'s keywords.
     However some keywords are impossible to be implement with [https://playwright.dev|Playwright], like all Alert handling keywords.
 
