@@ -3,7 +3,7 @@
 
 This project contains two things.
 
-1. A compatibility/migration layer library named _**SeleniumLibraryToBrowser**_ that has 164 of the 177 [SeleniumLibrary](https://github.com/robotframework/SeleniumLibrary) keywords implemented by using [Browser](https://browserlibrary.org) library internally.
+1. A compatibility/migration layer library named _**SeleniumLibraryToBrowser**_ that has 164 of the 177 [SeleniumLibrary](https://github.com/robotframework/SeleniumLibrary) keywords implemented by using [Browser](https://browserlibrary.org) library internally. See [SeleniumLibraryToBrowser Keyword Documentation](https://snooz82.github.io/robotframework-browser-migration/).
 2. A script to analyzes your [SeleniumLibrary](https://github.com/robotframework/SeleniumLibrary) keywords usage and creates a statistic over
    the usage in your project to get an impression of the effort when a migration to [Browser](https://browserlibrary.org) library is the goal.
 
